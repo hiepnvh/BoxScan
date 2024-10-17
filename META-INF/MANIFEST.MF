@@ -1,0 +1,27 @@
+Manifest-Version: 1.0
+Created-By: 1.3.1 (Sun Microsystems Inc.)
+Bundle-Vendor: Canon Inc.
+Bundle-Version: 3.3.1
+Bundle-Activator: AppletActivator
+Bundle-DocURL: 
+Bundle-Name: BoxScanApplet-Service
+Bundle-ContactAddress: 
+Bundle-Description: Example of service
+Bundle-ClassPath: .,DistributableSoftware.jar
+Import-Package: com.canon.meap.service.avs,                           
+                com.canon.meap.service.login,                         
+                com.canon.meap.service.sa
+Applet-Name: BoxScanApplet
+Application-Id: 5c7d1a7e-11b8-4ea2-8686-03315fe6a3d3
+DeviceSpecification-Ids: *
+MEAPSpecVersion: 34
+Locales: en
+ListeningPorts: 
+ConnectingPorts: 
+MaximumMemoryUsage: 2024
+MaximumThreadUsage: 0
+MaximumFilespaceUsage: 80
+MaximumFiledescriptorUsage: 0
+MaximumSocketUsage: 0
+MinimumConsoleSize: 638x388
+PeriodicalFileWriteFrequency: 0

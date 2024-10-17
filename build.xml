@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- Project name is set up -->
+<project name="BoxScan" default="build_en" basedir=".">
+	<description>
+	 Apache Ant Build File
+	</description>
+	<!-- set global properties for this build -->
+	<property file="build.properties"/>
+	<property name="build" location="build"/>
+	<property name="dist"	 location="dist"/>
+	<property name="source" location="src"/>
+	<property name="source_en" location="src/English"/>
+	<property name="source_ja" location="src/Japanese"/>
+	<!-- Jar name is set up -->
+	<property name="jar" value="BsTest.jar"/>
+
+	<path id="java.class.path">
+		<pathelement location="D:/PrintixPrj/device-canon-meap-print/lib/meap/meap.jar" />
+		<pathelement location="D:/PrintixPrj//device-canon-meap-print/lib/meap/osgi.jar" />
+	</path>
+
+	<target name="clean" description="clean up" >
+		<!-- Delete the ${build} and ${dist} directory trees -->
+		<delete dir="${build}"/>
+		<delete dir="${dist}"/>
+	</target>
+
+	<target name="init" depends="clean">
+		<!-- Create the build directory structure used by compile -->
+		<mkdir dir="${build}"/>
+	</target>
+
+	<target name="compile_ja" depends="init" description="compile the source of a japanese comment">
+		<!-- Compile the java code from ${source} into ${build} -->
+		<javac debug="off" deprecation="off" srcdir="${source_ja}" destdir="${build}" includeantruntime="off"
+		target="1.4" source="1.4" fork="yes" executable="${Compiler}">
+			<classpath refid="java.class.path"/>
+		</javac>
+	</target>
+
+	<target name="compile_en" depends="init" description="compile the source of a english comment">
+		<!-- Compile the java code from ${source} into ${build} -->
+		<javac debug="off" deprecation="off" srcdir="${source_en}" destdir="${build}" includeantruntime="off"
+		target="1.4" source="1.4" fork="yes" executable="${Compiler}">
+			<classpath refid="java.class.path"/>
+		</javac>
+	</target>
+
+	<target name="compile_ja_debug" depends="init" description="compile the source of an japanese comment">
+		<!-- Compile the java code from ${source} into ${build} -->
+		<javac debug="on" deprecation="off" srcdir="${source_ja}" destdir="${build}" includeantruntime="off"
+		target="1.4" source="1.4" fork="yes" executable="${Compiler}">
+			<classpath refid="java.class.path"/>
+		</javac>
+	</target>
+
+	<target name="compile_en_debug" depends="init" description="compile the source of a english comment">
+		<!-- Compile the java code from ${source} into ${build} -->
+		<javac debug="on" deprecation="off" srcdir="${source_en}" destdir="${build}" includeantruntime="off"
+		target="1.4" source="1.4" fork="yes" executable="${Compiler}">
+			<classpath refid="java.class.path"/>
+		</javac>
+	</target>
+
+	<target name="build_ja" depends="compile_ja" description="build" >
+		<mkdir dir="${dist}"/>
+		<jar destfile="${dist}/${jar}" update="false" compress="false" manifest="META-INF/MANIFEST.MF">
+			<fileset dir="${build}" includes="**/*.class"/>
+			<fileset dir="${EnvPC}/distributablesoftware" includes="DistributableSoftware.jar" />
+			<fileset dir="./" includes="image/**/*"/>
+		</jar>
+	</target>
+
+	<target name="build_ja_debug" depends="compile_ja_debug" description="debug build" >
+		<mkdir dir="${dist}"/>
+		<jar destfile="${dist}/${jar}" update="false" compress="false" manifest="META-INF/MANIFEST.MF">
+			<fileset dir="${build}" includes="**/*.class"/>
+			<fileset dir="${EnvPC}/distributablesoftware" includes="DistributableSoftware.jar" />
+			<fileset dir="./" includes="image/**/*"/>
+		</jar>
+	</target>
+
+	<target name="build_en" depends="compile_en" description="build" >
+		<mkdir dir="${dist}"/>
+		<jar destfile="${dist}/${jar}" update="false" compress="false" manifest="META-INF/MANIFEST.MF">
+			<fileset dir="${build}" includes="**/*.class"/>
+			<fileset dir="distributablesoftware" includes="DistributableSoftware.jar" />
+			<fileset dir="./" includes="image/**/*"/>
+		</jar>
+	</target>
+
+	<target name="build_en_debug" depends="compile_en_debug" description="debug build" >
+		<mkdir dir="${dist}"/>
+		<jar destfile="${dist}/${jar}" update="false" compress="false" manifest="META-INF/MANIFEST.MF">
+			<fileset dir="${build}" includes="**/*.class"/>
+			<fileset dir="distributablesoftware" includes="DistributableSoftware.jar" />
+			<fileset dir="./" includes="image/**/*"/>
+		</jar>
+	</target>
+</project>
