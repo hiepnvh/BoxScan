@@ -89,9 +89,9 @@ public class FolderListPanel extends Panel implements ActionListener {
     private CLabel pageCountLabel;
 
     /* �W���u�{�^�� */
-    private CLabelButton deleteButton;
     private CLabelButton scanButton;
-    private CLabelButton printButton;
+    private CLabelButton sendButton;
+    private CLabelButton delButton;
 
     /* ���b�Z�[�W���x�� */
     private CLabel messageLabel;
@@ -471,29 +471,28 @@ public class FolderListPanel extends Panel implements ActionListener {
      */
     private void locateJobButtons() {
 
-        /* [Delete]�{�^�� */
-        deleteButton = new CLabelButton(
-                "Delete", CLabelButton.CENTER, CLabelButton.CENTER,
-                CColor.black, CLabelButton.ARROW_NONE);
-        deleteButton.setBounds(30, 290, 116, 42);
-        deleteButton.addActionListener(this);
-        add(deleteButton);
+      /* [Send] button */
+      sendButton = new CLabelButton(
+              "Send", CLabelButton.CENTER, CLabelButton.CENTER,
+              CColor.black, CLabelButton.ARROW_NONE);
+      sendButton.setBounds(220, 290, 116, 42);
+      sendButton.addActionListener(this);
+      add(sendButton);
+      
+      /* [Cancel] button */
+      delButton = new CLabelButton(
+              "Cancel", CLabelButton.CENTER, CLabelButton.CENTER,
+              CColor.black, CLabelButton.ARROW_NONE);
+      delButton.setBounds(350, 290, 116, 42);
+      delButton.addActionListener(this);
+      add(delButton);
 
-        /* [Scan]�{�^�� */
-        scanButton = new CLabelButton(
-                "Scan", CLabelButton.CENTER, CLabelButton.CENTER,
-                CColor.black, CLabelButton.ARROW_NONE);
-        scanButton.setBounds(190, 290, 116, 42);
-        scanButton.addActionListener(this);
-        add(scanButton);
-
-        /* [Print]�{�^�� */
-        printButton = new CLabelButton(
-                "Print", CLabelButton.CENTER, CLabelButton.CENTER,
-                CColor.black, CLabelButton.ARROW_NONE);
-        printButton.setBounds(350, 290, 116, 42);
-        printButton.addActionListener(this);
-        add(printButton);
+      scanButton = new CLabelButton(
+          "Scan", CLabelButton.CENTER, CLabelButton.CENTER,
+          CColor.black, CLabelButton.ARROW_NONE);
+  scanButton.setBounds(90, 290, 116, 42);
+  scanButton.addActionListener(this);
+  add(scanButton);
 
         return;
     }
@@ -503,18 +502,21 @@ public class FolderListPanel extends Panel implements ActionListener {
      */
     private void dispJobButtons() {
 
-        /* �t�H���_�I������ [Delete] [Scan] [Print] ��L���Ƃ��܂� */
-        if (fileBox.isSelected()) {
-            deleteButton.setEnabled(true);
-            scanButton.setEnabled(true);
-            printButton.setEnabled(true);
+      /**
+       * Validate the [Delete] [Scan] [Print] button while folder
+       * is selected
+       */
+      if (fileBox.isSelected()) {
+          scanButton.setEnabled(true);
+          sendButton.setEnabled(true);
+          delButton.setEnabled(true);
 
-        /* �t�H���_���I������ [Scan] �݂̂�L���Ƃ��܂� */
-        } else {
-            deleteButton.setEnabled(false);
-            scanButton.setEnabled(true);
-            printButton.setEnabled(false);
-        }
+      /* Validate the [Scan] button only when folder isnot selected */
+      } else {
+          scanButton.setEnabled(true);
+          sendButton.setEnabled(false);
+          delButton.setEnabled(false);
+      }
 
         return;
     }
@@ -608,9 +610,9 @@ public class FolderListPanel extends Panel implements ActionListener {
         }
 
         /* �{�^���R���|�[�l���g�𖳌��ɂ��܂� */
-        deleteButton.setEnabled(false);
+        delButton.setEnabled(false);
         scanButton.setEnabled(false);
-        printButton.setEnabled(false);
+        sendButton.setEnabled(false);
 
         pageUpButton.setEnabled(false);
         pageDownButton.setEnabled(false);
@@ -697,25 +699,28 @@ public class FolderListPanel extends Panel implements ActionListener {
       }
     }
 
-    /**
-     * �t�H���_�폜�����s���܂�
-     */
-    private void executeDelete() {
+    private void executeSend() {
 
-        /* ���[�U�C���^�t�F�[�X�𖳌��ɂ��܂� */
-        disableComponents();
+      //send to destination
+      displayMessage("Sending...");
+  }
+    
+    private void executeDel() {
 
-        try {
+      /* Invalidate the user interface */
+      disableComponents();
 
-            /* �t�H���_�I�u�W�F�N�g���폜���܂� */
-            fileBox.deleteFolder();
+      try {
 
-        } catch (OperationFailureException oe) {
-            System.out.println(oe.getMessage());
-        }
+          /* Delete the folder object */
+          fileBox.deleteFolder();
 
-        return;
-    }
+      } catch (OperationFailureException oe) {
+//          logger.log(loginContext, Logger.LOG_LEVEL_INFO, oe.getMessage());
+      }
+
+      return;
+  }
 
     /**
      * �X�L���������s���܂�
@@ -782,10 +787,13 @@ public class FolderListPanel extends Panel implements ActionListener {
             }
         }
 
-        /* �t�H���_�폜�����s���܂� */
-        if (ae.getSource() == deleteButton) {
-            executeDelete();
-        }
+        if (ae.getSource() == sendButton) {
+          executeSend();
+      }
+        
+        if (ae.getSource() == delButton) {
+          executeDel();
+      }
 
         /* �X�L���������s���܂� */
         if (ae.getSource() == scanButton) {
