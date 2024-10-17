@@ -36,10 +36,12 @@ import com.canon.meap.imi.job.boxprint.BoxPrintJobDeletedEvent;
 import com.canon.meap.imi.job.boxprint.BoxPrintJobManager;
 import com.canon.meap.imi.job.boxprint.BoxPrintJobManagerEventAdapter;
 import com.canon.meap.imi.job.boxscan.BoxScanJobDeletedEvent;
+import com.canon.meap.imi.job.boxscan.BoxScanJobEventAdapter;
 import com.canon.meap.imi.job.boxscan.BoxScanJobManager;
 import com.canon.meap.imi.job.boxscan.BoxScanJobManagerEventAdapter;
 import com.canon.meap.imi.job.boxscan.BoxScanRequest;
 import com.canon.meap.service.avs.CAppletContext;
+import com.canon.meap.service.log.Logger;
 
 /**
  * �a�n�w�X�L�����T���v���v���O�����@�t�H���_���X�g��ʃN���X
@@ -102,6 +104,7 @@ public class FolderListPanel extends Panel implements ActionListener {
     private MouseEventAdapter mouseEventAdapter;
     private BoxEventReceiver boxEventReceiver;
     private BoxScanJobEventReceiver scanJobEventReceiver;
+    private BoxScanRequest boxScanRequest;
     private BoxPrintJobEventReceiver printJobEventReceiver;
 
     /* �ϐ� */
@@ -618,125 +621,80 @@ public class FolderListPanel extends Panel implements ActionListener {
     }
 
     /**
-     * CPCAEventListener���`���܂�
+     * Define the CPCA Eventlistener
      */
     private void addCpcaEventAdapter() {
 
-        boxEventReceiver = new BoxEventReceiver();
+      boxEventReceiver = new BoxEventReceiver();
 
-        try {
-            /* �{�b�N�X�Ǘ����擾���܂� */
-            BoxManager manager = BoxManager.getInstance(
-                                        AppletActivator._bundle,
-                                        jobService.accessControlToken);
-            /* �C�x���g���X�i��o�^���܂� */
-            manager.addBoxEventListener(AppletActivator._bundle,
-                                        jobService.accessControlToken,
-                                        boxEventReceiver);
+      try {
+        /* Obtains an instance of the box management class */
+        BoxManager manager =
+            BoxManager.getInstance(AppletActivator._bundle, jobService.accessControlToken);
+        /* Registers an event listener */
+        manager.addBoxEventListener(AppletActivator._bundle, jobService.accessControlToken,
+            boxEventReceiver);
 
-        } catch (OperationFailureException oe) {
-            System.out.println(oe.getMessage());
-        }
+      } catch (OperationFailureException oe) {
+//        logger.log(loginContext, Logger.LOG_LEVEL_INFO, oe.getMessage());
+      }
 
-        scanJobEventReceiver = new BoxScanJobEventReceiver();
+      return;
+    }
 
-        try {
-            /* �W���u�Ǘ����擾���܂� */
-            BoxScanJobManager manager = BoxScanJobManager.getInstance(
-                                        AppletActivator._bundle,
-                                        jobService.accessControlToken);
-            /* �C�x���g���X�i��o�^���܂� */
-            manager.addBoxScanJobManagerEventListener(
-                                        jobService.accessControlToken,
-                                        scanJobEventReceiver);
+    private void addScanRequestListener() {
+      scanJobEventReceiver = new BoxScanJobEventReceiver();
 
-        } catch (OperationFailureException oe) {
-            System.out.println(oe.getMessage());
-        }
+      try {
+        /* Obtains a job management instance */
+        boxScanRequest = BoxScanRequest.createInstance(jobService.accessControlToken);
+        boxScanRequest.addBoxScanJobEventListener(jobService.accessControlToken,
+            scanJobEventReceiver);
+      } catch (OperationFailureException oe) {
+//        logger.log(loginContext, Logger.LOG_LEVEL_INFO, oe.getMessage());
+      }
 
-        printJobEventReceiver = new BoxPrintJobEventReceiver();
-
-        try {
-            /* �W���u�Ǘ����擾���܂� */
-            BoxPrintJobManager manager = BoxPrintJobManager.getInstance(
-                                        AppletActivator._bundle,
-                                        jobService.accessControlToken);
-            /* �C�x���g���X�i��o�^���܂� */
-            manager.addBoxPrintJobManagerEventListener(
-                                        jobService.accessControlToken,
-                                        printJobEventReceiver);
-
-        } catch (OperationFailureException oe) {
-            System.out.println(oe.getMessage());
-        }
-
-        return;
     }
 
     /**
-     * CPCAEventListener���폜���܂�
+     * Delete the CPCAEventListener
      */
     private void removeCpcaEventAdapter() {
 
-        if ( null != boxEventReceiver ) {
+      if (null != boxEventReceiver) {
 
-            try {
-                /* �{�b�N�X�Ǘ����擾���܂� */
-                BoxManager manager = BoxManager.getInstance(
-                                            AppletActivator._bundle,
-                                            jobService.accessControlToken);
-                /* �C�x���g���X�i���������܂� */
-                manager.removeBoxEventListener(
-                                            AppletActivator._bundle,
-                                            jobService.accessControlToken,
-                                            boxEventReceiver);
+        try {
+          /* Obtains an instance of the box management class */
+          BoxManager manager =
+              BoxManager.getInstance(AppletActivator._bundle, jobService.accessControlToken);
+          /* Deletes listeners that receive events */
+          manager.removeBoxEventListener(AppletActivator._bundle, jobService.accessControlToken,
+              boxEventReceiver);
 
-            } catch (OperationFailureException oe) {
-                System.out.println(oe.getMessage());
-            }
-
-            boxEventReceiver = null;
+        } catch (OperationFailureException oe) {
+//          logger.log(loginContext, Logger.LOG_LEVEL_INFO, oe.getMessage());
         }
 
-        if ( null != scanJobEventReceiver ) {
+        boxEventReceiver = null;
+      }
 
-            try {
-                /* �W���u�Ǘ����擾���܂� */
-                BoxScanJobManager manager = BoxScanJobManager.getInstance(
-                                            AppletActivator._bundle,
-                                            jobService.accessControlToken);
-                /* �C�x���g���X�i���������܂� */
-                manager.removeBoxScanJobManagerEventListener(
-                                            jobService.accessControlToken,
-                                            scanJobEventReceiver);
+      return;
+    }
 
-            } catch (OperationFailureException oe) {
-                System.out.println(oe.getMessage());
-            }
+    private void removeScanEventListener() {
+      if (null != scanJobEventReceiver && null != boxScanRequest) {
 
-            scanJobEventReceiver = null;
+        try {
+          /* Obtains a job management instance */
+          boxScanRequest.removeBoxScanJobEventListener(jobService.accessControlToken,
+              scanJobEventReceiver);
+          //
+        } catch (OperationFailureException oe) {
+//          logger.log(loginContext, Logger.LOG_LEVEL_INFO, oe.getMessage());
         }
 
-        if ( null != printJobEventReceiver ) {
-
-            try {
-                /* �W���u�Ǘ����擾���܂� */
-                BoxPrintJobManager manager = BoxPrintJobManager.getInstance(
-                                            AppletActivator._bundle,
-                                            jobService.accessControlToken);
-                /* �C�x���g���X�i���������܂� */
-                manager.removeBoxPrintJobManagerEventListener(
-                                            jobService.accessControlToken,
-                                            printJobEventReceiver);
-
-            } catch (OperationFailureException oe) {
-                System.out.println(oe.getMessage());
-            }
-
-            printJobEventReceiver = null;
-        }
-
-        return;
+        scanJobEventReceiver = null;
+      }
     }
 
     /**
@@ -765,10 +723,8 @@ public class FolderListPanel extends Panel implements ActionListener {
     private void executeScan() {
 
         /* �X�L�����W���u�𐶐����܂� */
-      BoxScanRequest request;
-      try {
-        request = BoxScanRequest.createInstance(jobService.accessControlToken);
-        scanJob = new ScanJob(request);
+      addScanRequestListener();
+        scanJob = new ScanJob(boxScanRequest);
 
         /* �W���u�������\���ǂ����𒲂ׂ܂� */
         if (jobService.isSendAvailable()) {
@@ -794,17 +750,6 @@ public class FolderListPanel extends Panel implements ActionListener {
         }
 
         scanJob = null;
-      } catch (AccessControlException e) {
-        // TODO Auto-generated catch block
-        e.printStackTrace();
-      } catch (UnavailableMethodException e) {
-        // TODO Auto-generated catch block
-        e.printStackTrace();
-      } catch (OperationFailureException e) {
-        // TODO Auto-generated catch block
-        e.printStackTrace();
-      }
-        
 
         return;
     }
@@ -969,7 +914,7 @@ public class FolderListPanel extends Panel implements ActionListener {
      * �{�b�N�X�X�L�����W���u�C�x���g��M�N���X
      */
     private class BoxScanJobEventReceiver
-            extends BoxScanJobManagerEventAdapter {
+            extends BoxScanJobEventAdapter {
 
         /**
          * �W���u���f�o�C�X�����ŏ��ł����ꍇ�ɌĂяo����܂��B
