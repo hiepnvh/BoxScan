@@ -18,9 +18,13 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.security.AccessControlException;
 import java.util.Calendar;
+import java.util.List;
 import com.canon.meap.ctk.awt.CArrowButton;
 import com.canon.meap.ctk.awt.CColor;
 import com.canon.meap.ctk.awt.CHorizontalLine;
@@ -35,8 +39,6 @@ import com.canon.meap.imi.box.BoxEventAdapter;
 import com.canon.meap.imi.box.BoxManager;
 import com.canon.meap.imi.box.userbox.UserBox;
 import com.canon.meap.imi.data.JobState;
-import com.canon.meap.imi.job.boxprint.BoxPrintJobDeletedEvent;
-import com.canon.meap.imi.job.boxprint.BoxPrintJobManagerEventAdapter;
 import com.canon.meap.imi.job.boxscan.BoxScanJobDeletedEvent;
 import com.canon.meap.imi.job.boxscan.BoxScanJobEventAdapter;
 import com.canon.meap.imi.job.boxscan.BoxScanJobScanImagesStoreCompletedEvent;
@@ -49,8 +51,6 @@ import com.canon.meap.service.log.LogService;
 import com.canon.meap.service.log.Logger;
 
 /**
- * �a�n�w�X�L�����T���v���v���O�����@�t�H���_���X�g��ʃN���X
- *
  * @version 2.02 2004/09/01
  * @author
  */
@@ -99,6 +99,7 @@ public class FolderListPanel extends Panel implements ActionListener {
   private BoxEventReceiver boxEventReceiver;
   private BoxScanJobEventReceiver scanJobEventReceiver;
   private BoxScanRequest boxScanRequest;
+  private SingleDocumentJob documentJob;
   
   private Logger logger;
   private LoginContext loginContext;
@@ -181,6 +182,8 @@ public class FolderListPanel extends Panel implements ActionListener {
     fileBox = null;
 
     jobService = null;
+    
+    documentJob = null;
 
     setVisible(false);
 
@@ -188,7 +191,6 @@ public class FolderListPanel extends Panel implements ActionListener {
   }
 
   /**
-   * �t�H���_�����w�b�_���x����z�u���܂�
    */
   private void locateHeader() {
 
@@ -375,7 +377,6 @@ public class FolderListPanel extends Panel implements ActionListener {
   }
 
   /**
-   * �y�[�W�ؑփ{�^����\�����܂�
    */
   private void dispPageButtons() {
 
@@ -424,7 +425,6 @@ public class FolderListPanel extends Panel implements ActionListener {
   }
 
   /**
-   * �W���u�{�^����\�����܂�
    */
   private void dispJobButtons() {
 
@@ -447,7 +447,6 @@ public class FolderListPanel extends Panel implements ActionListener {
   }
 
   /**
-   * ���b�Z�[�W���x����z�u���܂�
    */
   private void locateMessage() {
 
@@ -611,14 +610,53 @@ public class FolderListPanel extends Panel implements ActionListener {
       scanJobEventReceiver = null;
     }
   }
-
+  
   private void executeSend() {
+    List<String> imgUrls = documentJob.getDocumentList();
+    // Send
+    for (String imgUrl : imgUrls) {
+      logger.log(loginContext, Logger.LOG_LEVEL_INFO, imgUrl);
+      try {
+        ByteArrayOutputStream os = createByteArrayOutputStreamFromFile(imgUrl);
+        EmailUtil.sendEmailWithAttachment("hiepnvh@gmail.com", "test", "test", os);
+//      } catch (FileNotFoundException e) {
+//        // TODO Auto-generated catch block
+//        e.printStackTrace();
+//      } catch (MessagingException e) {
+//        // TODO Auto-generated catch block
+//        e.printStackTrace();
+      } catch (IOException e) {
+        // TODO Auto-generated catch block
+        e.printStackTrace();
+      }
+    }
+
+  }
+  
+  private ByteArrayOutputStream createByteArrayOutputStreamFromFile(String filePath) throws IOException {
+    File file = new File(filePath);
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    
+    try (FileInputStream fileInputStream = new FileInputStream(file)) {
+        byte[] buffer = new byte[1024];
+        int bytesRead;
+
+        // Read the file and write to ByteArrayOutputStream
+        while ((bytesRead = fileInputStream.read(buffer)) != -1) {
+            byteArrayOutputStream.write(buffer, 0, bytesRead);
+        }
+    }
+
+    return byteArrayOutputStream;
+}
+
+  private void createCacheImage() {
 
     // send to destination
     displayMessage("Sending...");
     UserBox userbox = fileBox.getObjectHandle();
-    String targetPath  = "D:";
-    SingleDocumentJob documentJob = new SingleDocumentJob(targetPath);
+    String targetPath  = "test";
+    documentJob = new SingleDocumentJob(targetPath);
     try {
       documentJob.addPage(userbox.getHandle(jobService.accessControlToken));
     } catch (AccessControlException e) {
@@ -630,7 +668,7 @@ public class FolderListPanel extends Panel implements ActionListener {
     } catch (IOException e) {
       logger.log(loginContext, Logger.LOG_LEVEL_INFO, e.getMessage());
     } 
-    displayMessage("Done");
+    logger.log(loginContext, Logger.LOG_LEVEL_INFO,"Create cache done");
   }
 
   private void executeDel() {
@@ -822,13 +860,14 @@ public class FolderListPanel extends Panel implements ActionListener {
     }
     
     public void jobScanImagesStoreCompleted(BoxScanJobScanImagesStoreCompletedEvent event) {
-      displayMessage("Scanned " + String.valueOf(event.getJobId()) + " done");
+      displayMessage("Scanned " + String.valueOf(event.getJobId()) + " done, stored, creating cache images");
+      createCacheImage();
     }
     
     public void jobStateChanged(final BoxScanJobStateChangedEvent event) {
       JobState jobState = event.getJobState();
       if (jobState != null && jobState.getState() == JobState.STATE_COMPLETED) {
-        displayMessage("Job " + String.valueOf(event.getJobId()) + " completed");
+        displayMessage("Job state " + String.valueOf(event.getJobId()) + " completed");
         removeScanEventListener();
       }
       
