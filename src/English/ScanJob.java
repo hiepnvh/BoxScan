@@ -136,7 +136,7 @@ public class ScanJob {
 
             /* Obtains a job management instance */
             BoxScanJobManager manager =
-                    BoxScanJobManager.getInstance(AppletActivator._bundle,
+                    BoxScanJobManager.getInstance(AppletActivator.bundleContext.getBundle(),
                                                   accessControlToken);
             /* Submits a job */
             manager.send(accessControlToken, boxScanRequest);

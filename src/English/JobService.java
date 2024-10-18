@@ -108,7 +108,7 @@ public class JobService {
 
             /* Obtains a job management instance */
             BoxScanJobManager manager =
-                    BoxScanJobManager.getInstance(AppletActivator._bundle,
+                    BoxScanJobManager.getInstance(AppletActivator.bundleContext.getBundle(),
                                                   accessControlToken);
 
             /* Checks whether or not a job can be submitted */

@@ -34,7 +34,7 @@
 	<target name="compile_ja" depends="init" description="compile the source of a japanese comment">
 		<!-- Compile the java code from ${source} into ${build} -->
 		<javac debug="off" deprecation="off" srcdir="${source_ja}" destdir="${build}" includeantruntime="off"
-		target="1.4" source="1.4" fork="yes" executable="${Compiler}">
+		target="1.8" source="1.8" fork="yes" executable="${Compiler}">
 			<classpath refid="java.class.path"/>
 		</javac>
 	</target>
@@ -42,7 +42,7 @@
 	<target name="compile_en" depends="init" description="compile the source of a english comment">
 		<!-- Compile the java code from ${source} into ${build} -->
 		<javac debug="off" deprecation="off" srcdir="${source_en}" destdir="${build}" includeantruntime="off"
-		target="1.4" source="1.4" fork="yes" executable="${Compiler}">
+		target="1.8" source="1.8" fork="yes" executable="${Compiler}">
 			<classpath refid="java.class.path"/>
 		</javac>
 	</target>
@@ -50,7 +50,7 @@
 	<target name="compile_ja_debug" depends="init" description="compile the source of an japanese comment">
 		<!-- Compile the java code from ${source} into ${build} -->
 		<javac debug="on" deprecation="off" srcdir="${source_ja}" destdir="${build}" includeantruntime="off"
-		target="1.4" source="1.4" fork="yes" executable="${Compiler}">
+		target="1.8" source="1.8" fork="yes" executable="${Compiler}">
 			<classpath refid="java.class.path"/>
 		</javac>
 	</target>
@@ -58,7 +58,7 @@
 	<target name="compile_en_debug" depends="init" description="compile the source of a english comment">
 		<!-- Compile the java code from ${source} into ${build} -->
 		<javac debug="on" deprecation="off" srcdir="${source_en}" destdir="${build}" includeantruntime="off"
-		target="1.4" source="1.4" fork="yes" executable="${Compiler}">
+		target="1.8" source="1.8" fork="yes" executable="${Compiler}">
 			<classpath refid="java.class.path"/>
 		</javac>
 	</target>

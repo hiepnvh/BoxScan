@@ -18,23 +18,35 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.io.IOException;
+import java.security.AccessControlException;
 import java.util.Calendar;
 import com.canon.meap.ctk.awt.CArrowButton;
 import com.canon.meap.ctk.awt.CColor;
 import com.canon.meap.ctk.awt.CHorizontalLine;
 import com.canon.meap.ctk.awt.CLabel;
 import com.canon.meap.ctk.awt.CLabelButton;
+import com.canon.meap.imaging.ImagingException;
 import com.canon.meap.imi.OperationFailureException;
+import com.canon.meap.imi.UnavailableMethodException;
 import com.canon.meap.imi.box.BoxContentAppendedEvent;
 import com.canon.meap.imi.box.BoxContentDeletedEvent;
 import com.canon.meap.imi.box.BoxEventAdapter;
 import com.canon.meap.imi.box.BoxManager;
+import com.canon.meap.imi.box.userbox.UserBox;
+import com.canon.meap.imi.data.JobState;
 import com.canon.meap.imi.job.boxprint.BoxPrintJobDeletedEvent;
 import com.canon.meap.imi.job.boxprint.BoxPrintJobManagerEventAdapter;
 import com.canon.meap.imi.job.boxscan.BoxScanJobDeletedEvent;
 import com.canon.meap.imi.job.boxscan.BoxScanJobEventAdapter;
+import com.canon.meap.imi.job.boxscan.BoxScanJobScanImagesStoreCompletedEvent;
+import com.canon.meap.imi.job.boxscan.BoxScanJobScanPageCountEvent;
+import com.canon.meap.imi.job.boxscan.BoxScanJobStateChangedEvent;
 import com.canon.meap.imi.job.boxscan.BoxScanRequest;
+import com.canon.meap.security.LoginContext;
 import com.canon.meap.service.avs.CAppletContext;
+import com.canon.meap.service.log.LogService;
+import com.canon.meap.service.log.Logger;
 
 /**
  * �a�n�w�X�L�����T���v���v���O�����@�t�H���_���X�g��ʃN���X
@@ -49,47 +61,36 @@ public class FolderListPanel extends Panel implements ActionListener {
    */
   private static final long serialVersionUID = 3932463120881006951L;
 
-  /* �W���u�T�[�r�X�N���X */
   private JobService jobService;
 
-  /* �t�@�C���{�b�N�X�N���X */
   private FileBox fileBox;
 
-  /* �X�L�����W���u�N���X */
   private ScanJob scanJob;
 
-  /* �t�H���_�����w�b�_���x�� */
   private CLabel nameHeader;
   private CLabel pagesHeader;
   private CLabel dateTimeHeader;
 
-  /* �t�H���_���p�l�� */
   private Panel folderInfoPanel;
 
-  /* �t�H���_�������x�� */
   private CLabel[] nameLabel;
   private CLabel[] pageLabel;
   private CLabel[] dateLabel;
   private CLabel[] timeLabel;
 
-  /* �t�H���_��񃉃C�� */
   private Panel[] folderInfoLine;
   private CHorizontalLine partitionLine;
 
-  /* �y�[�W�ؑփ{�^�� */
   private CArrowButton pageUpButton;
   private CArrowButton pageDownButton;
   private CLabel pageCountLabel;
 
-  /* �W���u�{�^�� */
   private CLabelButton scanButton;
   private CLabelButton sendButton;
   private CLabelButton delButton;
 
-  /* ���b�Z�[�W���x�� */
   private CLabel messageLabel;
 
-  /* �萔 */
   private static final int FOLDER_INFO_FONT = 16;
   private static final int FOLDER_INFO_MAX = 8;
 
@@ -98,15 +99,15 @@ public class FolderListPanel extends Panel implements ActionListener {
   private BoxEventReceiver boxEventReceiver;
   private BoxScanJobEventReceiver scanJobEventReceiver;
   private BoxScanRequest boxScanRequest;
-  private BoxPrintJobEventReceiver printJobEventReceiver;
+  
+  private Logger logger;
+  private LoginContext loginContext;
 
-  /* �ϐ� */
   private int dispPage;
   private int dispFolderCount;
   private boolean disableUI;
 
   /**
-   * �R���X�g���N�^
    */
   public FolderListPanel() {
     super();
@@ -115,7 +116,6 @@ public class FolderListPanel extends Panel implements ActionListener {
     setLayout(null);
     setBackground(CColor.gainsboro);
 
-    /* �e�R���|�[�l���g��z�u���܂� */
     locateHeader();
     locateFolderLists();
     locatePageButtons();
@@ -124,41 +124,36 @@ public class FolderListPanel extends Panel implements ActionListener {
 
     setVisible(false);
 
-    /* �}�E�XEventListener�𐶐����܂� */
     mouseEventAdapter = new MouseEventAdapter();
+    
+    logger = AppletActivator.getAppletActivator().getLogService().getLogger(LogService.LOGKIND_APP);
+    loginContext = BoxScanApplet.getBoxScanApplet().getLoginContext();
   }
 
   /**
-   * ��ʂ̕\�����s���܂�
    */
   public void display() {
 
-    /* �W���u�T�[�r�X�𐶐����܂� */
+    logger.log(loginContext, Logger.LOG_LEVEL_INFO, "Display xxx");
     jobService = new JobService();
 
-    /* �t�@�C���{�b�N�X�𐶐����܂� */
     fileBox = new FileBox();
 
     try {
 
-      /* �t�@�C���{�b�N�X�����������܂� */
       fileBox.activate();
 
-      /* �t�H���_�����擾���܂� */
       dispFolderCount = fileBox.getFolderCount();
 
       dispPage = 0;
 
-      /* �e�R���|�[�l���g��\�����܂� */
       dispFolderLists();
       dispPageButtons();
       dispJobButtons();
       dispFileBoxNo();
 
-      /* ���[�U�C���^�t�F�[�X��L���ɂ��܂� */
       enableComponents();
 
-      /* CPCAEventListener���`���܂� */
       addCpcaEventAdapter();
 
     } catch (OperationFailureException oe) {
@@ -175,10 +170,9 @@ public class FolderListPanel extends Panel implements ActionListener {
    */
   public void unDisplay() {
 
-    /* CPCAEventListener���폜���܂� */
     removeCpcaEventAdapter();
+    removeScanEventListener();
 
-    /* ���[�U�C���^�t�F�[�X�𖳌��ɂ��܂� */
     disableComponents();
 
     dispPage = 0;
@@ -198,17 +192,14 @@ public class FolderListPanel extends Panel implements ActionListener {
    */
   private void locateHeader() {
 
-    /* �t�H���_�� */
     nameHeader = new CLabel("Name", CLabel.LEFT);
     nameHeader.setBounds(30, 15, 200, 20);
     add(nameHeader);
 
-    /* �y�[�W�� */
     pagesHeader = new CLabel("Pages", CLabel.LEFT);
     pagesHeader.setBounds(230, 15, 80, 20);
     add(pagesHeader);
 
-    /* ���t�E���� */
     dateTimeHeader = new CLabel("Date Time", CLabel.LEFT);
     dateTimeHeader.setBounds(310, 15, 110, 20);
     add(dateTimeHeader);
@@ -217,20 +208,16 @@ public class FolderListPanel extends Panel implements ActionListener {
   }
 
   /**
-   * �t�H���_����ݒ肵�܂�
    */
   private void locateFolderLists() {
 
-    /* �t�H���_��񃉃C���𐶐����܂� */
     folderInfoLine = new Panel[FOLDER_INFO_MAX];
 
-    /* �t�H���_�������x���𐶐����܂� */
     nameLabel = new CLabel[FOLDER_INFO_MAX];
     pageLabel = new CLabel[FOLDER_INFO_MAX];
     dateLabel = new CLabel[FOLDER_INFO_MAX];
     timeLabel = new CLabel[FOLDER_INFO_MAX];
 
-    /* �t�H���_���p�l���𐶐����܂� */
     folderInfoPanel = new Panel();
     folderInfoPanel.setBounds(30, 40, 385, (30 * FOLDER_INFO_MAX) - 2);
     folderInfoPanel.setLayout(null);
@@ -238,49 +225,40 @@ public class FolderListPanel extends Panel implements ActionListener {
 
     add(folderInfoPanel);
 
-    /* �S�t�H���_�ɂ��Ċe������ݒ肵�܂� */
     for (int i = 0; i < FOLDER_INFO_MAX; i++) {
 
-      /* �t�H���_�� */
       nameLabel[i] = new CLabel("", CLabel.LEFT);
       nameLabel[i].setBounds(0, 2, 198, 30);
       nameLabel[i].setFont(new Font("Dialog", Font.BOLD, FOLDER_INFO_FONT));
 
-      /* �y�[�W�� */
       pageLabel[i] = new CLabel("", CLabel.LEFT);
       pageLabel[i].setBounds(200, 2, 78, 30);
       pageLabel[i].setFont(new Font("Dialog", Font.BOLD, FOLDER_INFO_FONT));
 
-      /* ���t */
       dateLabel[i] = new CLabel("", CLabel.LEFT);
       dateLabel[i].setBounds(280, 2, 53, 30);
       dateLabel[i].setFont(new Font("Dialog", Font.BOLD, FOLDER_INFO_FONT));
 
-      /* ���� */
       timeLabel[i] = new CLabel("", CLabel.LEFT);
       timeLabel[i].setBounds(330, 2, 53, 30);
       timeLabel[i].setFont(new Font("Dialog", Font.BOLD, FOLDER_INFO_FONT));
 
-      /* �t�H���_��񃉃C���𐶐����܂� */
       folderInfoLine[i] = new Panel();
       folderInfoLine[i].setLayout(null);
       folderInfoLine[i].setBounds(0, 30 * i, 385, 30);
       folderInfoLine[i].setBackground(CColor.white);
 
-      /* �r���𐶐����܂� */
       if (i < (FOLDER_INFO_MAX - 1)) {
         partitionLine = new CHorizontalLine(CHorizontalLine.LOWERED);
         partitionLine.setBounds(0, 30 - 2, 385, 2);
         folderInfoLine[i].add(partitionLine);
       }
 
-      /* �t�H���_�������x�����t�H���_��񃉃C���ɓ\��t���܂� */
       folderInfoLine[i].add(nameLabel[i]);
       folderInfoLine[i].add(pageLabel[i]);
       folderInfoLine[i].add(dateLabel[i]);
       folderInfoLine[i].add(timeLabel[i]);
 
-      /* �t�H���_��񃉃C�����t�H���_���p�l���ɓ\��t���܂� */
       folderInfoPanel.add(folderInfoLine[i]);
     }
 
@@ -288,42 +266,33 @@ public class FolderListPanel extends Panel implements ActionListener {
   }
 
   /**
-   * �t�H���_���p�l����\�����܂�
    */
   private void dispFolderLists() {
 
     int startNumber;
     String stringPageSize = null;
 
-    /* �\���y�[�W���`�F�b�N���܂� */
     startNumber = dispPage * FOLDER_INFO_MAX;
     if ((startNumber >= dispFolderCount) && (dispPage > 0)) {
       dispPage--;
       startNumber = dispPage * FOLDER_INFO_MAX;
     }
 
-    /* �\���y�[�W���̑S�t�H���_�ɂ��Ċe������\�����܂� */
     for (int i = 0; i < FOLDER_INFO_MAX; i++) {
 
       if (i + startNumber < dispFolderCount) {
 
-        /* �t�H���_�� */
         nameLabel[i].setText(fileBox.getFolderName(i + startNumber));
 
-        /* �y�[�W�� */
         stringPageSize = "000" + Long.toString(fileBox.getPageSize(i + startNumber));
         pageLabel[i].setText(stringPageSize.substring(stringPageSize.length() - 4));
 
-        /* ���t */
         dateLabel[i].setText(convTimeStampToDateString(fileBox.getTimeStamp(i + startNumber)));
 
-        /* ���� */
         timeLabel[i].setText(convTimeStampToTimeString(fileBox.getTimeStamp(i + startNumber)));
 
-        /* �t�H���_��񃉃C�����������܂� */
         folderInfoLine[i].setVisible(true);
 
-        /* �I�����ꂽ�t�H���_��񃉃C���̃J���[�𒲐����܂� */
         if ((startNumber + i) == fileBox.getSelectFolderNo()) {
           setInfoLineBackground(i, CColor.powderblue);
         } else {
@@ -343,7 +312,6 @@ public class FolderListPanel extends Panel implements ActionListener {
    *
    * @param dateTimes ���t�E����
    *
-   * @return ���t(MM/DD)
    */
   private String convTimeStampToDateString(Calendar dateTimes) {
 
@@ -359,11 +327,8 @@ public class FolderListPanel extends Panel implements ActionListener {
   }
 
   /**
-   * ������"HH:MM"�`���ŕԂ��܂�
    *
-   * @param dateTimes ���t�E����
    *
-   * @return ����(HH:MM)
    */
   private String convTimeStampToTimeString(Calendar dateTimes) {
 
@@ -378,12 +343,6 @@ public class FolderListPanel extends Panel implements ActionListener {
     return stringHHMM;
   }
 
-  /**
-   * �t�H���_��񃉃C���̃J���[�𒲐����܂�
-   *
-   * @param lineNo �t�H���_���Line��
-   * @param color �w�i�F
-   */
   private void setInfoLineBackground(int lineNo, Color color) {
 
     nameLabel[lineNo].setBackground(color);
@@ -395,24 +354,18 @@ public class FolderListPanel extends Panel implements ActionListener {
     return;
   }
 
-  /**
-   * �y�[�W�ؑփ{�^����z�u���܂�
-   */
   private void locatePageButtons() {
 
-    /* [Up]�{�^�� */
     pageUpButton = new CArrowButton(CArrowButton.ARROW_UP);
     pageUpButton.setBounds(520, 40, 40, 40);
     pageUpButton.addActionListener(this);
     add(pageUpButton);
 
-    /* [Down]�{�^�� */
     pageDownButton = new CArrowButton(CArrowButton.ARROW_DOWN);
     pageDownButton.setBounds(520, 110, 40, 40);
     pageDownButton.addActionListener(this);
     add(pageDownButton);
 
-    /* �y�[�W���x�� */
     pageCountLabel = new CLabel();
     pageCountLabel.setBounds(515, 85, 50, 20);
     pageCountLabel.setFont(new Font("Dialog", Font.BOLD, FOLDER_INFO_FONT));
@@ -426,28 +379,24 @@ public class FolderListPanel extends Panel implements ActionListener {
    */
   private void dispPageButtons() {
 
-    /* [Up]�{�^�� */
     if (dispPage > 0) {
       pageUpButton.setEnabled(true);
     } else {
       pageUpButton.setEnabled(false);
     }
 
-    /* [Down]�{�^�� */
     if (dispPage < (dispFolderCount - 1) / FOLDER_INFO_MAX) {
       pageDownButton.setEnabled(true);
     } else {
       pageDownButton.setEnabled(false);
     }
 
-    /* �y�[�W���x�� */
     pageCountLabel.setText((dispPage + 1) + "/" + (((dispFolderCount - 1) / FOLDER_INFO_MAX) + 1));
 
     return;
   }
 
   /**
-   * �W���u�{�^����z�u���܂�
    */
   private void locateJobButtons() {
 
@@ -502,7 +451,6 @@ public class FolderListPanel extends Panel implements ActionListener {
    */
   private void locateMessage() {
 
-    /* ���b�Z�[�W���x�� */
     messageLabel = new CLabel();
     messageLabel.setBounds(10, 340, 600, 30);
     add(messageLabel);
@@ -512,7 +460,6 @@ public class FolderListPanel extends Panel implements ActionListener {
   }
 
   /**
-   * �t�@�C���{�b�N�X�ԍ���\�����܂�
    */
   private void dispFileBoxNo() {
 
@@ -522,7 +469,6 @@ public class FolderListPanel extends Panel implements ActionListener {
 
     messageFileBoxNo = new StringBuffer("FileBox No. : ");
 
-    /* �t�@�C���{�b�N�X�ԍ����擾���܂� */
     intFileBoxNo = fileBox.getFileBoxNo();
     if (intFileBoxNo < 10) {
       messageFileBoxNo.append('0');
@@ -530,16 +476,13 @@ public class FolderListPanel extends Panel implements ActionListener {
     stringFileBoxNo = new Integer(intFileBoxNo).toString();
     messageFileBoxNo.append(stringFileBoxNo);
 
-    /* �t�@�C���{�b�N�X�ԍ���\�����܂� */
     displayMessage(messageFileBoxNo.toString());
 
     return;
   }
 
   /**
-   * ���b�Z�[�W��\�����܂�
    *
-   * @param ���b�Z�[�W
    */
   private void displayMessage(String message) {
 
@@ -549,11 +492,9 @@ public class FolderListPanel extends Panel implements ActionListener {
   }
 
   /**
-   * ���[�U�C���^�t�F�[�X��L���ɂ��܂�
    */
   private void enableComponents() {
 
-    /* MouseListener��ǉ����܂� */
     for (int i = 0; i < FOLDER_INFO_MAX; i++) {
       nameLabel[i].addMouseListener(mouseEventAdapter);
       pageLabel[i].addMouseListener(mouseEventAdapter);
@@ -562,7 +503,6 @@ public class FolderListPanel extends Panel implements ActionListener {
       folderInfoLine[i].addMouseListener(mouseEventAdapter);
     }
 
-    /* �{�^���R���|�[�l���g��L���ɂ��܂� */
     dispJobButtons();
     dispPageButtons();
 
@@ -572,11 +512,9 @@ public class FolderListPanel extends Panel implements ActionListener {
   }
 
   /**
-   * ���[�U�C���^�t�F�[�X�𖳌��ɂ��܂�
    */
   private void disableComponents() {
 
-    /* MouseListener���폜���܂� */
     for (int i = 0; i < FOLDER_INFO_MAX; i++) {
       nameLabel[i].removeMouseListener(mouseEventAdapter);
       pageLabel[i].removeMouseListener(mouseEventAdapter);
@@ -585,7 +523,6 @@ public class FolderListPanel extends Panel implements ActionListener {
       folderInfoLine[i].removeMouseListener(mouseEventAdapter);
     }
 
-    /* �{�^���R���|�[�l���g�𖳌��ɂ��܂� */
     delButton.setEnabled(false);
     scanButton.setEnabled(false);
     sendButton.setEnabled(false);
@@ -608,9 +545,9 @@ public class FolderListPanel extends Panel implements ActionListener {
     try {
       /* Obtains an instance of the box management class */
       BoxManager manager =
-          BoxManager.getInstance(AppletActivator._bundle, jobService.accessControlToken);
+          BoxManager.getInstance(AppletActivator.bundleContext.getBundle(), jobService.accessControlToken);
       /* Registers an event listener */
-      manager.addBoxEventListener(AppletActivator._bundle, jobService.accessControlToken,
+      manager.addBoxEventListener(AppletActivator.bundleContext.getBundle(), jobService.accessControlToken,
           boxEventReceiver);
 
     } catch (OperationFailureException oe) {
@@ -644,9 +581,9 @@ public class FolderListPanel extends Panel implements ActionListener {
       try {
         /* Obtains an instance of the box management class */
         BoxManager manager =
-            BoxManager.getInstance(AppletActivator._bundle, jobService.accessControlToken);
+            BoxManager.getInstance(AppletActivator.bundleContext.getBundle(), jobService.accessControlToken);
         /* Deletes listeners that receive events */
-        manager.removeBoxEventListener(AppletActivator._bundle, jobService.accessControlToken,
+        manager.removeBoxEventListener(AppletActivator.bundleContext.getBundle(), jobService.accessControlToken,
             boxEventReceiver);
 
       } catch (OperationFailureException oe) {
@@ -679,6 +616,21 @@ public class FolderListPanel extends Panel implements ActionListener {
 
     // send to destination
     displayMessage("Sending...");
+    UserBox userbox = fileBox.getObjectHandle();
+    String targetPath  = "D:";
+    SingleDocumentJob documentJob = new SingleDocumentJob(targetPath);
+    try {
+      documentJob.addPage(userbox.getHandle(jobService.accessControlToken));
+    } catch (AccessControlException e) {
+      logger.log(loginContext, Logger.LOG_LEVEL_INFO, e.getMessage());
+    } catch (UnavailableMethodException e) {
+      logger.log(loginContext, Logger.LOG_LEVEL_INFO, e.getMessage());
+    } catch (ImagingException e) {
+      logger.log(loginContext, Logger.LOG_LEVEL_INFO, e.getMessage());
+    } catch (IOException e) {
+      logger.log(loginContext, Logger.LOG_LEVEL_INFO, e.getMessage());
+    } 
+    displayMessage("Done");
   }
 
   private void executeDel() {
@@ -699,24 +651,18 @@ public class FolderListPanel extends Panel implements ActionListener {
   }
 
   /**
-   * �X�L���������s���܂�
    */
   private void executeScan() {
 
-    /* �X�L�����W���u�𐶐����܂� */
     addScanRequestListener();
     scanJob = new ScanJob(boxScanRequest);
 
-    /* �W���u�������\���ǂ����𒲂ׂ܂� */
     if (jobService.isSendAvailable()) {
 
-      /* ���[�U�C���^�t�F�[�X�𖳌��ɂ��܂� */
       disableComponents();
 
-      /* �X�L�����W���u�ɃX�L�����̊J�n��ʒm���܂� */
       if (false == scanJob.startScan(fileBox.getObjectHandle())) {
 
-        /* ���[�U�C���^�t�F�[�X��L���ɂ��܂� */
         enableComponents();
 
         scanJob = null;
@@ -726,7 +672,6 @@ public class FolderListPanel extends Panel implements ActionListener {
 
     } else {
 
-      /* �W���u���s�s���b�Z�[�W��\�����܂� */
       displayMessage("Cannot submit the job.");
     }
 
@@ -736,16 +681,13 @@ public class FolderListPanel extends Panel implements ActionListener {
   }
 
   /**
-   * actionPerformed�������̏������s���܂�
    *
    * @param ae ActionEvent
    */
   public void actionPerformed(ActionEvent ae) {
 
-    /* �t�@�C���{�b�N�X�ԍ���\�����܂� */
     dispFileBoxNo();
 
-    /* �O�y�[�W��\�����܂� */
     if (ae.getSource() == pageUpButton) {
       if (dispPage > 0) {
         dispPage--;
@@ -754,7 +696,6 @@ public class FolderListPanel extends Panel implements ActionListener {
       }
     }
 
-    /* ���y�[�W��\�����܂� */
     if (ae.getSource() == pageDownButton) {
       if (dispPage < (dispFolderCount - 1) / FOLDER_INFO_MAX) {
         dispPage++;
@@ -771,7 +712,6 @@ public class FolderListPanel extends Panel implements ActionListener {
       executeDel();
     }
 
-    /* �X�L���������s���܂� */
     if (ae.getSource() == scanButton) {
       executeScan();
     }
@@ -781,40 +721,33 @@ public class FolderListPanel extends Panel implements ActionListener {
 
 
   /**
-   * �}�E�X�C�x���g��M�N���X
    */
   private class MouseEventAdapter extends MouseAdapter {
 
     /**
-     * mousePressed�������̏������s���܂�
      *
      * @param me MouseEvent
      */
     public void mousePressed(MouseEvent me) {
 
-      /* �\������Ă���S�Ẵt�H���_�𖢑I����Ԃɂ��܂� */
       for (int i = 0; i < FOLDER_INFO_MAX; i++) {
         setInfoLineBackground(i, CColor.white);
       }
 
-      /* �I�����ꂽ�t�H���_���`�F�b�N���܂� */
       for (int i = 0; i < FOLDER_INFO_MAX; i++) {
 
         if ((me.getComponent() == nameLabel[i]) || (me.getComponent() == pageLabel[i])
             || (me.getComponent() == dateLabel[i]) || (me.getComponent() == timeLabel[i])
             || (me.getComponent() == folderInfoLine[i])) {
 
-          /* ���I����Ԃ̃t�H���_�Ȃ�I���Ƃ��܂� */
           if (((dispPage * FOLDER_INFO_MAX) + i) != fileBox.getSelectFolderNo()) {
             fileBox.setSelectFolderNo((dispPage * FOLDER_INFO_MAX) + i);
             setInfoLineBackground(i, CColor.powderblue);
 
-            /* �I����Ԃ̃t�H���_�Ȃ�I�������Ƃ��܂� */
           } else {
             fileBox.resetSelectFolderNo();
           }
 
-          /* �W���u�{�^����\�����܂� */
           dispJobButtons();
           break;
         }
@@ -826,64 +759,49 @@ public class FolderListPanel extends Panel implements ActionListener {
   }/* end class MouseEventAdapter */
 
   /**
-   * �{�b�N�X�C�x���g��M�N���X
    */
   private class BoxEventReceiver extends BoxEventAdapter {
 
     /**
-     * �{�b�N�X�̕������ǉ����ꂽ�ۂɌĂяo����܂��B
      *
-     * @param event �C�x���g�I�u�W�F�N�g
      */
     public void boxContentAppended(BoxContentAppendedEvent event) {
 
-      /* �t�@�C���{�b�N�X���e���X�V���܂� */
       try {
 
-        /* �t�H���_�����X�V���܂� */
         fileBox.updateFolderInfo();
 
-        /* �t�H���_�����擾���܂� */
         dispFolderCount = fileBox.getFolderCount();
 
       } catch (OperationFailureException oe) {
         System.out.println(oe.getMessage());
       }
 
-      /* �t�H���_���p�l�����ĕ\�����܂� */
       fileBox.resetSelectFolderNo();
       dispFolderLists();
       dispPageButtons();
     }
 
     /**
-     * �{�b�N�X�̕������폜���ꂽ�ۂɌĂяo����܂��B
      *
-     * @param event �C�x���g�I�u�W�F�N�g
      */
     public void boxContentDeleted(BoxContentDeletedEvent event) {
 
-      /* �t�@�C���{�b�N�X���e���X�V���܂� */
       try {
 
-        /* �t�H���_�����X�V���܂� */
         fileBox.updateFolderInfo();
 
-        /* �t�H���_�����擾���܂� */
         dispFolderCount = fileBox.getFolderCount();
 
       } catch (OperationFailureException oe) {
         System.out.println(oe.getMessage());
       }
 
-      /* �t�H���_���p�l�����ĕ\�����܂� */
       fileBox.resetSelectFolderNo();
       dispFolderLists();
 
-      /* �t�H���_�폜 */
       if (disableUI == true) {
 
-        /* ���[�U�C���^�t�F�[�X��L���ɂ��܂� */
         enableComponents();
       }
     }
@@ -891,44 +809,32 @@ public class FolderListPanel extends Panel implements ActionListener {
   }/* end class BoxEventReceiver */
 
   /**
-   * �{�b�N�X�X�L�����W���u�C�x���g��M�N���X
    */
   private class BoxScanJobEventReceiver extends BoxScanJobEventAdapter {
 
-    /**
-     * �W���u���f�o�C�X�����ŏ��ł����ꍇ�ɌĂяo����܂��B
-     *
-     * @param event �C�x���g�I�u�W�F�N�g
-     */
     public void jobDeleted(BoxScanJobDeletedEvent event) {
 
-      /* ���[�U�C���^�t�F�[�X��L���ɂ��܂� */
       enableComponents();
+    }
+    
+    public void jobScanPageCount(BoxScanJobScanPageCountEvent event) {
+        displayMessage("Scanned " + String.valueOf(event.getCount()) + " pages");
+    }
+    
+    public void jobScanImagesStoreCompleted(BoxScanJobScanImagesStoreCompletedEvent event) {
+      displayMessage("Scanned " + String.valueOf(event.getJobId()) + " done");
+    }
+    
+    public void jobStateChanged(final BoxScanJobStateChangedEvent event) {
+      JobState jobState = event.getJobState();
+      if (jobState != null && jobState.getState() == JobState.STATE_COMPLETED) {
+        displayMessage("Job " + String.valueOf(event.getJobId()) + " completed");
+        removeScanEventListener();
+      }
+      
     }
 
   }/* end class BoxScanJobEventReceiver */
-
-  /**
-   * �{�b�N�X�v�����g�W���u�C�x���g��M�N���X
-   */
-  private class BoxPrintJobEventReceiver extends BoxPrintJobManagerEventAdapter {
-
-    /**
-     * �W���u���f�o�C�X�����ŏ��ł����ꍇ�ɌĂяo����܂��B
-     *
-     * @param event �C�x���g�I�u�W�F�N�g
-     */
-    public void jobDeleted(BoxPrintJobDeletedEvent event) {
-
-      /* �t�H���_���p�l�����ĕ\�����܂� */
-      fileBox.resetSelectFolderNo();
-      dispFolderLists();
-
-      /* ���[�U�C���^�t�F�[�X��L���ɂ��܂� */
-      enableComponents();
-    }
-
-  }/* end class BoxPrintJobEventReceiver */
 
 }/* end class FolderListPanel */
 

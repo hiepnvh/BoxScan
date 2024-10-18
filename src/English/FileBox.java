@@ -178,10 +178,10 @@ public class FileBox {
         try {
             /* Obtains an instance of the box management class */
             BoxManager manager =
-                        BoxManager.getInstance(AppletActivator._bundle,
+                        BoxManager.getInstance(AppletActivator.bundleContext.getBundle(),
                                                accessControlToken);
             /* Obtains a list of user boxes */
-            operationResult = manager.getUserBoxList(AppletActivator._bundle,
+            operationResult = manager.getUserBoxList(AppletActivator.bundleContext.getBundle(),
                                                      accessControlToken);
 
         } catch (OperationFailureException oe) {

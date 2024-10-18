@@ -31,7 +31,7 @@ public class AppletActivator implements BundleActivator {
 
     private static AppletActivator appletActivator;
 
-    private BundleContext bundleContext;
+    public static BundleContext bundleContext;
     private AppletContext appletContext;
 
     private ServiceReference avsServiceReference;
@@ -48,8 +48,6 @@ public class AppletActivator implements BundleActivator {
     private BoxScanApplet applet;
 
     private Image iconImageInfo;
-
-    public static Bundle _bundle = null;
 
     /**
      * constructor
@@ -77,7 +75,7 @@ public class AppletActivator implements BundleActivator {
 
         this.bundleContext = bundleContext;
 
-        _bundle = bundleContext.getBundle();
+//        _bundle = bundleContext.getBundle();
 
         try {
 
