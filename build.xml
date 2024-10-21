@@ -18,9 +18,10 @@
 	<path id="java.class.path">
 		<pathelement location="D:/PrintixPrj/device-canon-meap-print/lib/meap/meap.jar" />
 		<pathelement location="D:/PrintixPrj//device-canon-meap-print/lib/meap/osgi.jar" />
-		<!---->
-		<pathelement location="D:/jar_libs/javax.mail-1.6.2.jar" />
-				<pathelement location="D:/jar_libs/javax.mail-1.6.2.jar" />
+		<!--<pathelement location="D:/jar_libs/javax.mail-1.6.2.jar" />
+				<pathelement location="D:/jar_libs/javax.mail-1.6.2.jar" />-->
+		<pathelement location="D:/jar_libs/commons-net-3.11.1.jar" />
+		
 	</path>
 
 	<target name="clean" description="clean up" >

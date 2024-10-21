@@ -611,34 +611,35 @@ public class FolderListPanel extends Panel implements ActionListener {
     // Send
     for (String imgUrl : imgUrls) {
       LoggerUtil.i(imgUrl);
-      try {
-        ByteArrayOutputStream os = createByteArrayOutputStreamFromFile(imgUrl);
-        EmailUtil.sendEmailWithAttachment("hiepnvh@gmail.com", "test", "test", os);
-      } catch (IOException e) {
-        LoggerUtil.i(e.getMessage());
-      }
+//      try {
+//        ByteArrayOutputStream os = createByteArrayOutputStreamFromFile(imgUrl);
+        FTPUtil.uploadFile("pc1511sq", 21, "anonymous", "", imgUrl, "result.pdf");
+////        EmailUtil.sendEmailWithAttachment("hiepnvh@gmail.com", "test", "test", os);
+//      } catch (IOException e) {
+//        LoggerUtil.i(e.getMessage());
+//      }
     }
 
   }
   
-  private ByteArrayOutputStream createByteArrayOutputStreamFromFile(String filePath) throws IOException {
-    File file = new File(filePath);
-    LoggerUtil.i(file.getAbsolutePath());
-    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    
-    try (FileInputStream fileInputStream = new FileInputStream(file)) {
-      LoggerUtil.i("created fileInputStream");
-        byte[] buffer = new byte[1024];
-        int bytesRead;
-
-        // Read the file and write to ByteArrayOutputStream
-        while ((bytesRead = fileInputStream.read(buffer)) != -1) {
-            byteArrayOutputStream.write(buffer, 0, bytesRead);
-        }
-    }
-    LoggerUtil.i("created byteArrayOutputStream");
-    return byteArrayOutputStream;
-}
+//  private ByteArrayOutputStream createByteArrayOutputStreamFromFile(String filePath) throws IOException {
+//    File file = new File(filePath);
+//    LoggerUtil.i(file.getAbsolutePath());
+//    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+//    
+//    try (FileInputStream fileInputStream = new FileInputStream(file)) {
+//      LoggerUtil.i("created fileInputStream");
+//        byte[] buffer = new byte[1024];
+//        int bytesRead;
+//
+//        // Read the file and write to ByteArrayOutputStream
+//        while ((bytesRead = fileInputStream.read(buffer)) != -1) {
+//            byteArrayOutputStream.write(buffer, 0, bytesRead);
+//        }
+//    }
+//    LoggerUtil.i("created byteArrayOutputStream");
+//    return byteArrayOutputStream;
+//}
 
   private void createCacheImage() {
 
