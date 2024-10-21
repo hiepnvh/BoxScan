@@ -9,7 +9,6 @@ import javax.mail.Multipart;
 import javax.mail.PasswordAuthentication;
 import javax.mail.Session;
 import javax.mail.Transport;
-import javax.mail.internet.AddressException;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMessage;
@@ -20,10 +19,11 @@ public class EmailUtil {
 
   public static void sendEmailWithAttachment(String recipientEmail, String subject,
       String messageBody, ByteArrayOutputStream outputStream) {
+    LoggerUtil.i("sendEmailWithAttachment");
     // Sender's Gmail credentials
     String senderEmail = "hiepdev18@gmail.com";
     String senderPassword = "123456Aa@"; // Use app-specific password if necessary
-
+//
     // Set up properties for Gmail SMTP server
     Properties properties = new Properties();
     properties.put("mail.smtp.auth", "true");
@@ -38,9 +38,10 @@ public class EmailUtil {
         return new PasswordAuthentication(senderEmail, senderPassword);
       }
     });
-
+    LoggerUtil.i("session created");
     // Create the email message
     Message message = new MimeMessage(session);
+    LoggerUtil.i("message created");
     try {
       message.setFrom(new InternetAddress(senderEmail));
       message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(recipientEmail));
@@ -66,13 +67,9 @@ public class EmailUtil {
 
       // Send the email
       Transport.send(message);
-      System.out.println("Email sent successfully with attachment to " + recipientEmail);
-    } catch (AddressException e) {
-      // TODO Auto-generated catch block
-      e.printStackTrace();
+      LoggerUtil.i("Email sent successfully with attachment to " + recipientEmail);
     } catch (MessagingException e) {
-      // TODO Auto-generated catch block
-      e.printStackTrace();
+      LoggerUtil.i(e.getMessage());
     }
 
   }

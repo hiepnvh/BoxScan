@@ -101,9 +101,6 @@ public class FolderListPanel extends Panel implements ActionListener {
   private BoxScanRequest boxScanRequest;
   private SingleDocumentJob documentJob;
   
-  private Logger logger;
-  private LoginContext loginContext;
-
   private int dispPage;
   private int dispFolderCount;
   private boolean disableUI;
@@ -127,15 +124,13 @@ public class FolderListPanel extends Panel implements ActionListener {
 
     mouseEventAdapter = new MouseEventAdapter();
     
-    logger = AppletActivator.getAppletActivator().getLogService().getLogger(LogService.LOGKIND_APP);
-    loginContext = BoxScanApplet.getBoxScanApplet().getLoginContext();
   }
 
   /**
    */
   public void display() {
 
-    logger.log(loginContext, Logger.LOG_LEVEL_INFO, "Display xxx");
+    LoggerUtil.i("Display xxx");
     jobService = new JobService();
 
     fileBox = new FileBox();
@@ -615,19 +610,12 @@ public class FolderListPanel extends Panel implements ActionListener {
     List<String> imgUrls = documentJob.getDocumentList();
     // Send
     for (String imgUrl : imgUrls) {
-      logger.log(loginContext, Logger.LOG_LEVEL_INFO, imgUrl);
+      LoggerUtil.i(imgUrl);
       try {
         ByteArrayOutputStream os = createByteArrayOutputStreamFromFile(imgUrl);
         EmailUtil.sendEmailWithAttachment("hiepnvh@gmail.com", "test", "test", os);
-//      } catch (FileNotFoundException e) {
-//        // TODO Auto-generated catch block
-//        e.printStackTrace();
-//      } catch (MessagingException e) {
-//        // TODO Auto-generated catch block
-//        e.printStackTrace();
       } catch (IOException e) {
-        // TODO Auto-generated catch block
-        e.printStackTrace();
+        LoggerUtil.i(e.getMessage());
       }
     }
 
@@ -635,9 +623,11 @@ public class FolderListPanel extends Panel implements ActionListener {
   
   private ByteArrayOutputStream createByteArrayOutputStreamFromFile(String filePath) throws IOException {
     File file = new File(filePath);
+    LoggerUtil.i(file.getAbsolutePath());
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     
     try (FileInputStream fileInputStream = new FileInputStream(file)) {
+      LoggerUtil.i("created fileInputStream");
         byte[] buffer = new byte[1024];
         int bytesRead;
 
@@ -646,7 +636,7 @@ public class FolderListPanel extends Panel implements ActionListener {
             byteArrayOutputStream.write(buffer, 0, bytesRead);
         }
     }
-
+    LoggerUtil.i("created byteArrayOutputStream");
     return byteArrayOutputStream;
 }
 
@@ -660,15 +650,15 @@ public class FolderListPanel extends Panel implements ActionListener {
     try {
       documentJob.addPage(userbox.getHandle(jobService.accessControlToken));
     } catch (AccessControlException e) {
-      logger.log(loginContext, Logger.LOG_LEVEL_INFO, e.getMessage());
+      LoggerUtil.i(e.getMessage());
     } catch (UnavailableMethodException e) {
-      logger.log(loginContext, Logger.LOG_LEVEL_INFO, e.getMessage());
+      LoggerUtil.i(e.getMessage());
     } catch (ImagingException e) {
-      logger.log(loginContext, Logger.LOG_LEVEL_INFO, e.getMessage());
+      LoggerUtil.i(e.getMessage());
     } catch (IOException e) {
-      logger.log(loginContext, Logger.LOG_LEVEL_INFO, e.getMessage());
+      LoggerUtil.i(e.getMessage());
     } 
-    logger.log(loginContext, Logger.LOG_LEVEL_INFO,"Create cache done");
+    LoggerUtil.i("Create cache done");
   }
 
   private void executeDel() {
@@ -804,7 +794,7 @@ public class FolderListPanel extends Panel implements ActionListener {
      *
      */
     public void boxContentAppended(BoxContentAppendedEvent event) {
-
+      LoggerUtil.i("boxContentAppended");
       try {
 
         fileBox.updateFolderInfo();
@@ -812,7 +802,7 @@ public class FolderListPanel extends Panel implements ActionListener {
         dispFolderCount = fileBox.getFolderCount();
 
       } catch (OperationFailureException oe) {
-        System.out.println(oe.getMessage());
+        LoggerUtil.i(oe.getMessage());
       }
 
       fileBox.resetSelectFolderNo();
@@ -824,7 +814,7 @@ public class FolderListPanel extends Panel implements ActionListener {
      *
      */
     public void boxContentDeleted(BoxContentDeletedEvent event) {
-
+      LoggerUtil.i("boxContentDeleted");
       try {
 
         fileBox.updateFolderInfo();
@@ -851,20 +841,23 @@ public class FolderListPanel extends Panel implements ActionListener {
   private class BoxScanJobEventReceiver extends BoxScanJobEventAdapter {
 
     public void jobDeleted(BoxScanJobDeletedEvent event) {
-
+      LoggerUtil.i("jobDeleted");
       enableComponents();
     }
     
     public void jobScanPageCount(BoxScanJobScanPageCountEvent event) {
+      LoggerUtil.i("jobScanPageCount");
         displayMessage("Scanned " + String.valueOf(event.getCount()) + " pages");
     }
     
     public void jobScanImagesStoreCompleted(BoxScanJobScanImagesStoreCompletedEvent event) {
+      LoggerUtil.i("jobScanImagesStoreCompleted");
       displayMessage("Scanned " + String.valueOf(event.getJobId()) + " done, stored, creating cache images");
       createCacheImage();
     }
     
     public void jobStateChanged(final BoxScanJobStateChangedEvent event) {
+      LoggerUtil.i("jobStateChanged " + event.getJobState().getState());
       JobState jobState = event.getJobState();
       if (jobState != null && jobState.getState() == JobState.STATE_COMPLETED) {
         displayMessage("Job state " + String.valueOf(event.getJobId()) + " completed");
