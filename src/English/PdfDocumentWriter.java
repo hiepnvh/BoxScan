@@ -13,7 +13,7 @@ public class PdfDocumentWriter {
     private DocumentWriter dw = null;
 
     PdfDocumentWriter(final OutputStream os) {
-            dw = DocumentWriterFactory.createDocumentWriter("PDF", os);
+            dw = DocumentWriterFactory.createDocumentWriter("PDF", os);//OOXML_Word for word
     }
 
     public void addPage(long imageHandle) throws IOException, ImagingException {

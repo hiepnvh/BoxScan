@@ -11,12 +11,19 @@
 //
 //***************************************************************************
 
+import java.security.AccessControlException;
 import com.canon.meap.imi.OperationFailureException;
 import com.canon.meap.imi.UnacceptableException;
+import com.canon.meap.imi.UnavailableJobException;
+import com.canon.meap.imi.UnavailableMethodException;
+import com.canon.meap.imi.box.BoxManager;
+import com.canon.meap.imi.box.meapbox.MeapBox;
 import com.canon.meap.imi.box.userbox.UserBox;
+import com.canon.meap.imi.data.JobId;
 import com.canon.meap.imi.data.Orientation;
 import com.canon.meap.imi.data.StandardSize;
 import com.canon.meap.imi.data.StandardSizeId;
+import com.canon.meap.imi.job.boxscan.BoxScanJob;
 import com.canon.meap.imi.job.boxscan.BoxScanJobManager;
 import com.canon.meap.imi.job.boxscan.BoxScanRequest;
 import com.canon.meap.security.AccessControlToken;
@@ -34,6 +41,7 @@ public class ScanJob {
     /* AccessControlToken */
     private AccessControlToken accessControlToken;
     private BoxScanRequest boxScanRequest;
+    private BoxScanJob currJob;
 
     /**
      * Constructor
@@ -59,18 +67,65 @@ public class ScanJob {
             performJobScript(fileBoxObjectHandle);
 
         } catch (OperationFailureException oe) {
-            System.out.println(oe.getMessage());
+            LoggerUtil.i(oe.getMessage());
 
             return false;
         }
 
         return true;
     }
+    
+    /**
+     * Start the scan
+     *
+     * @param      fileBoxObjectHandle  File box Object
+     */
+    public void continueScan() {
+
+      try {
+
+        currJob.resumeInteraction(accessControlToken);
+      } catch (AccessControlException e) {
+        // TODO Auto-generated catch block
+        LoggerUtil.i(e.toString());
+      } catch (UnavailableMethodException e) {
+        // TODO Auto-generated catch block
+        LoggerUtil.i(e.toString());
+      } catch (OperationFailureException e) {
+        // TODO Auto-generated catch block
+        LoggerUtil.i(e.toString());
+      } catch (UnavailableJobException e) {
+        // TODO Auto-generated catch block
+        LoggerUtil.i(e.toString());
+      } catch (UnacceptableException e) {
+        // TODO Auto-generated catch block
+        LoggerUtil.i(e.toString());
+      }
+
+    }
 
     /**
      * End the scan
      */
     public void endScan() {
+      try {
+        currJob.cancel(accessControlToken);
+      } catch (AccessControlException e) {
+        // TODO Auto-generated catch block
+        LoggerUtil.i(e.toString());
+      } catch (UnavailableMethodException e) {
+        // TODO Auto-generated catch block
+        LoggerUtil.i(e.toString());
+      } catch (OperationFailureException e) {
+        // TODO Auto-generated catch block
+        LoggerUtil.i(e.toString());
+      } catch (UnavailableJobException e) {
+        // TODO Auto-generated catch block
+        LoggerUtil.i(e.toString());
+      } catch (UnacceptableException e) {
+        // TODO Auto-generated catch block
+        LoggerUtil.i(e.toString());
+      }
     }
 
     /**
@@ -125,6 +180,10 @@ public class ScanJob {
 //                    BoxScanRequest.createInstance(accessControlToken);
 
             /* Specifies the box in which the document is to be saved */
+//          BoxManager boxManager = BoxManager.getInstance(AppletActivator.bundleContext.getBundle(), accessControlToken);
+//
+//          MeapBox meapBox = boxManager.getMeapBox(AppletActivator.bundleContext.getBundle(), accessControlToken);
+          
             boxScanRequest.setBox(accessControlToken, fileBoxObjectHandle);
 
             /* Sets the size of originals */
@@ -135,11 +194,10 @@ public class ScanJob {
                     new Orientation(Orientation.ORIENTATION_LONG_EDGE_FEED)));
 
             /* Obtains a job management instance */
-            BoxScanJobManager manager =
-                    BoxScanJobManager.getInstance(AppletActivator.bundleContext.getBundle(),
-                                                  accessControlToken);
+            BoxScanJobManager manager = BoxScanJobManager.getInstance(AppletActivator.bundleContext.getBundle(),
+                                          accessControlToken);
             /* Submits a job */
-            manager.send(accessControlToken, boxScanRequest);
+            currJob = manager.send(accessControlToken, boxScanRequest);
 
         } catch (UnacceptableException ce) {
             throw new OperationFailureException(

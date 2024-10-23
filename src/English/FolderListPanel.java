@@ -25,6 +25,8 @@ import java.io.IOException;
 import java.security.AccessControlException;
 import java.util.Calendar;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import com.canon.meap.ctk.awt.CArrowButton;
 import com.canon.meap.ctk.awt.CColor;
 import com.canon.meap.ctk.awt.CHorizontalLine;
@@ -49,6 +51,8 @@ import com.canon.meap.security.LoginContext;
 import com.canon.meap.service.avs.CAppletContext;
 import com.canon.meap.service.log.LogService;
 import com.canon.meap.service.log.Logger;
+import lombok.AllArgsConstructor;
+import lombok.Value;
 
 /**
  * @version 2.02 2004/09/01
@@ -88,6 +92,7 @@ public class FolderListPanel extends Panel implements ActionListener {
   private CLabelButton scanButton;
   private CLabelButton sendButton;
   private CLabelButton delButton;
+  private CLabelButton continueButton;
 
   private CLabel messageLabel;
 
@@ -96,7 +101,7 @@ public class FolderListPanel extends Panel implements ActionListener {
 
   /* EventListener */
   private MouseEventAdapter mouseEventAdapter;
-  private BoxEventReceiver boxEventReceiver;
+//  private BoxEventReceiver boxEventReceiver;
   private BoxScanJobEventReceiver scanJobEventReceiver;
   private BoxScanRequest boxScanRequest;
   private SingleDocumentJob documentJob;
@@ -150,7 +155,7 @@ public class FolderListPanel extends Panel implements ActionListener {
 
       enableComponents();
 
-      addCpcaEventAdapter();
+//      addCpcaEventAdapter();
 
     } catch (OperationFailureException oe) {
       System.out.println(oe.getMessage());
@@ -166,7 +171,7 @@ public class FolderListPanel extends Panel implements ActionListener {
    */
   public void unDisplay() {
 
-    removeCpcaEventAdapter();
+//    removeCpcaEventAdapter();
     removeScanEventListener();
 
     disableComponents();
@@ -409,6 +414,13 @@ public class FolderListPanel extends Panel implements ActionListener {
     delButton.setBounds(350, 290, 116, 42);
     delButton.addActionListener(this);
     add(delButton);
+    
+    /* [Continue] button */
+    continueButton = new CLabelButton("Continue", CLabelButton.CENTER, CLabelButton.CENTER, CColor.black,
+        CLabelButton.ARROW_NONE);
+    continueButton.setBounds(480, 290, 116, 42);
+    continueButton.addActionListener(this);
+    add(continueButton);
 
     scanButton = new CLabelButton("Scan", CLabelButton.CENTER, CLabelButton.CENTER, CColor.black,
         CLabelButton.ARROW_NONE);
@@ -517,7 +529,8 @@ public class FolderListPanel extends Panel implements ActionListener {
       folderInfoLine[i].removeMouseListener(mouseEventAdapter);
     }
 
-    delButton.setEnabled(false);
+    continueButton.setEnabled(false);
+    delButton.setEnabled(true);
     scanButton.setEnabled(false);
     sendButton.setEnabled(false);
 
@@ -532,24 +545,24 @@ public class FolderListPanel extends Panel implements ActionListener {
   /**
    * Define the CPCA Eventlistener
    */
-  private void addCpcaEventAdapter() {
-
-    boxEventReceiver = new BoxEventReceiver();
-
-    try {
-      /* Obtains an instance of the box management class */
-      BoxManager manager =
-          BoxManager.getInstance(AppletActivator.bundleContext.getBundle(), jobService.accessControlToken);
-      /* Registers an event listener */
-      manager.addBoxEventListener(AppletActivator.bundleContext.getBundle(), jobService.accessControlToken,
-          boxEventReceiver);
-
-    } catch (OperationFailureException oe) {
-      // logger.log(loginContext, Logger.LOG_LEVEL_INFO, oe.getMessage());
-    }
-
-    return;
-  }
+//  private void addCpcaEventAdapter() {
+//
+//    boxEventReceiver = new BoxEventReceiver();
+//
+//    try {
+//      /* Obtains an instance of the box management class */
+//      BoxManager manager =
+//          BoxManager.getInstance(AppletActivator.bundleContext.getBundle(), jobService.accessControlToken);
+//      /* Registers an event listener */
+//      manager.addBoxEventListener(AppletActivator.bundleContext.getBundle(), jobService.accessControlToken,
+//          boxEventReceiver);
+//
+//    } catch (OperationFailureException oe) {
+//      // logger.log(loginContext, Logger.LOG_LEVEL_INFO, oe.getMessage());
+//    }
+//
+//    return;
+//  }
 
   private void addScanRequestListener() {
     scanJobEventReceiver = new BoxScanJobEventReceiver();
@@ -568,27 +581,27 @@ public class FolderListPanel extends Panel implements ActionListener {
   /**
    * Delete the CPCAEventListener
    */
-  private void removeCpcaEventAdapter() {
-
-    if (null != boxEventReceiver) {
-
-      try {
-        /* Obtains an instance of the box management class */
-        BoxManager manager =
-            BoxManager.getInstance(AppletActivator.bundleContext.getBundle(), jobService.accessControlToken);
-        /* Deletes listeners that receive events */
-        manager.removeBoxEventListener(AppletActivator.bundleContext.getBundle(), jobService.accessControlToken,
-            boxEventReceiver);
-
-      } catch (OperationFailureException oe) {
-        // logger.log(loginContext, Logger.LOG_LEVEL_INFO, oe.getMessage());
-      }
-
-      boxEventReceiver = null;
-    }
-
-    return;
-  }
+//  private void removeCpcaEventAdapter() {
+//
+//    if (null != boxEventReceiver) {
+//
+//      try {
+//        /* Obtains an instance of the box management class */
+//        BoxManager manager =
+//            BoxManager.getInstance(AppletActivator.bundleContext.getBundle(), jobService.accessControlToken);
+//        /* Deletes listeners that receive events */
+//        manager.removeBoxEventListener(AppletActivator.bundleContext.getBundle(), jobService.accessControlToken,
+//            boxEventReceiver);
+//
+//      } catch (OperationFailureException oe) {
+//        // logger.log(loginContext, Logger.LOG_LEVEL_INFO, oe.getMessage());
+//      }
+//
+//      boxEventReceiver = null;
+//    }
+//
+//    return;
+//  }
 
   private void removeScanEventListener() {
     if (null != scanJobEventReceiver && null != boxScanRequest) {
@@ -606,6 +619,16 @@ public class FolderListPanel extends Panel implements ActionListener {
     }
   }
   
+  private void executeContinue() {
+    disableComponents();
+    if(scanJob != null) {
+      LoggerUtil.i("continue scan");
+      scanJob.continueScan();
+    } else {
+      LoggerUtil.i("scan job nll");
+    }
+  }
+  
   private void executeSend() {
     List<String> imgUrls = documentJob.getDocumentList();
     // Send
@@ -613,7 +636,7 @@ public class FolderListPanel extends Panel implements ActionListener {
       LoggerUtil.i(imgUrl);
 //      try {
 //        ByteArrayOutputStream os = createByteArrayOutputStreamFromFile(imgUrl);
-        FTPUtil.uploadFile("pc1511sq", 21, "anonymous", "", imgUrl, "result.pdf");
+//        FTPUtil.uploadFile("pc1511sq", 21, "anonymous", "", imgUrl, "result.pdf");
 ////        EmailUtil.sendEmailWithAttachment("hiepnvh@gmail.com", "test", "test", os);
 //      } catch (IOException e) {
 //        LoggerUtil.i(e.getMessage());
@@ -644,12 +667,13 @@ public class FolderListPanel extends Panel implements ActionListener {
   private void createCacheImage() {
 
     // send to destination
-    displayMessage("Sending...");
+    LoggerUtil.i("createCacheImage...");
     UserBox userbox = fileBox.getObjectHandle();
     String targetPath  = "test";
     documentJob = new SingleDocumentJob(targetPath);
     try {
       documentJob.addPage(userbox.getHandle(jobService.accessControlToken));
+      LoggerUtil.i("Create cache done");
     } catch (AccessControlException e) {
       LoggerUtil.i(e.getMessage());
     } catch (UnavailableMethodException e) {
@@ -659,7 +683,6 @@ public class FolderListPanel extends Panel implements ActionListener {
     } catch (IOException e) {
       LoggerUtil.i(e.getMessage());
     } 
-    LoggerUtil.i("Create cache done");
   }
 
   private void executeDel() {
@@ -678,6 +701,10 @@ public class FolderListPanel extends Panel implements ActionListener {
 
     return;
   }
+  
+  private void executeCancel() {
+    scanJob.endScan();
+  }
 
   /**
    */
@@ -694,7 +721,7 @@ public class FolderListPanel extends Panel implements ActionListener {
 
         enableComponents();
 
-        scanJob = null;
+//        scanJob = null;
 
         return;
       }
@@ -704,7 +731,7 @@ public class FolderListPanel extends Panel implements ActionListener {
       displayMessage("Cannot submit the job.");
     }
 
-    scanJob = null;
+//    scanJob = null;
 
     return;
   }
@@ -738,11 +765,16 @@ public class FolderListPanel extends Panel implements ActionListener {
     }
 
     if (ae.getSource() == delButton) {
-      executeDel();
+//      executeDel();
+      executeCancel();
     }
 
     if (ae.getSource() == scanButton) {
       executeScan();
+    }
+    
+    if (ae.getSource() == continueButton) {
+      executeContinue();
     }
 
     return;
@@ -789,57 +821,64 @@ public class FolderListPanel extends Panel implements ActionListener {
 
   /**
    */
-  private class BoxEventReceiver extends BoxEventAdapter {
-
-    /**
-     *
-     */
-    public void boxContentAppended(BoxContentAppendedEvent event) {
-      LoggerUtil.i("boxContentAppended");
-      try {
-
-        fileBox.updateFolderInfo();
-
-        dispFolderCount = fileBox.getFolderCount();
-
-      } catch (OperationFailureException oe) {
-        LoggerUtil.i(oe.getMessage());
-      }
-
-      fileBox.resetSelectFolderNo();
-      dispFolderLists();
-      dispPageButtons();
-    }
-
-    /**
-     *
-     */
-    public void boxContentDeleted(BoxContentDeletedEvent event) {
-      LoggerUtil.i("boxContentDeleted");
-      try {
-
-        fileBox.updateFolderInfo();
-
-        dispFolderCount = fileBox.getFolderCount();
-
-      } catch (OperationFailureException oe) {
-        System.out.println(oe.getMessage());
-      }
-
-      fileBox.resetSelectFolderNo();
-      dispFolderLists();
-
-      if (disableUI == true) {
-
-        enableComponents();
-      }
-    }
-
-  }/* end class BoxEventReceiver */
+//  private class BoxEventReceiver extends BoxEventAdapter {
+//
+//    /**
+//     *
+//     */
+//    public void boxContentAppended(BoxContentAppendedEvent event) {
+//      LoggerUtil.i("boxContentAppended");
+//      try {
+//
+//        fileBox.updateFolderInfo();
+//
+//        dispFolderCount = fileBox.getFolderCount();
+//
+//      } catch (OperationFailureException oe) {
+//        LoggerUtil.i(oe.getMessage());
+//      }
+//
+//      fileBox.resetSelectFolderNo();
+//      dispFolderLists();
+//      dispPageButtons();
+//    }
+//
+//    /**
+//     *
+//     */
+//    public void boxContentDeleted(BoxContentDeletedEvent event) {
+//      LoggerUtil.i("boxContentDeleted");
+//      try {
+//
+//        fileBox.updateFolderInfo();
+//
+//        dispFolderCount = fileBox.getFolderCount();
+//
+//      } catch (OperationFailureException oe) {
+//        System.out.println(oe.getMessage());
+//      }
+//
+//      fileBox.resetSelectFolderNo();
+//      dispFolderLists();
+//
+//      if (disableUI == true) {
+//
+//        enableComponents();
+//      }
+//    }
+//
+//  }/* end class BoxEventReceiver */
 
   /**
    */
   private class BoxScanJobEventReceiver extends BoxScanJobEventAdapter {
+    
+    private ExecutorService imageProcExecutor;
+    private JobState jobState;
+    
+    BoxScanJobEventReceiver() {
+      imageProcExecutor = Executors.newSingleThreadExecutor( new NamedThreadFactory(getClass().getSimpleName() + ".imageProcExecutor"));
+    }
 
     public void jobDeleted(BoxScanJobDeletedEvent event) {
       LoggerUtil.i("jobDeleted");
@@ -849,6 +888,7 @@ public class FolderListPanel extends Panel implements ActionListener {
     public void jobScanPageCount(BoxScanJobScanPageCountEvent event) {
       LoggerUtil.i("jobScanPageCount");
         displayMessage("Scanned " + String.valueOf(event.getCount()) + " pages");
+        imageProcExecutor.submit(new ImageProcRunnable(jobState));
     }
     
     public void jobScanImagesStoreCompleted(BoxScanJobScanImagesStoreCompletedEvent event) {
@@ -859,15 +899,51 @@ public class FolderListPanel extends Panel implements ActionListener {
     
     public void jobStateChanged(final BoxScanJobStateChangedEvent event) {
       LoggerUtil.i("jobStateChanged " + event.getJobState().getState());
-      JobState jobState = event.getJobState();
+      jobState = event.getJobState();
       if (jobState != null && jobState.getState() == JobState.STATE_COMPLETED) {
-        displayMessage("Job state " + String.valueOf(event.getJobId()) + " completed");
-        removeScanEventListener();
+        imageProcExecutor.submit(new ImageProcCompleteRunnable());
+        imageProcExecutor.shutdown();
+//        continueButton.setEnabled(true);
+        displayMessage("Job state completed, jobid " + String.valueOf(event.getJobId()) + "");
+        
+      } else if (jobState.getState() == JobState.STATE_INTERACTION && jobState.getReason() == JobState.REASON_OPERATED_BY_OPERATOR) {
+//        continueButton.setEnabled(true);
+        //event when there are some errors
       }
       
     }
 
   }/* end class BoxScanJobEventReceiver */
+  
+  @AllArgsConstructor
+  private class ImageProcCompleteRunnable implements Runnable {
+    @Override
+    public void run() {
+      //end scan job
+      try {
+        documentJob.endJob();
+      } catch (IOException e) {
+        LoggerUtil.i(e.toString());
+      }
+      //delete all docs
+      //remove listener
+      removeScanEventListener();
+    }
+  }
+  
+  @Value
+  private class ImageProcRunnable implements Runnable {
+    private JobState jobState;
+    public ImageProcRunnable(JobState jobState) {
+      this.jobState = jobState;
+    }
+    
+    @Override
+    public void run() {
+      //if job state is ready, then can continue scan
+//      if (jobState == JobState.)
+    }
+  }
 
 }/* end class FolderListPanel */
 
