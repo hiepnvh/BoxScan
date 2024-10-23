@@ -56,7 +56,7 @@ public class ScanJob {
      *
      * @param      fileBoxObjectHandle  File box Object
      */
-    public boolean startScan(UserBox fileBoxObjectHandle) {
+    public boolean startScan() {
 
         try {
 
@@ -64,7 +64,7 @@ public class ScanJob {
             fetchAccessControlToken();
 
             /* Submit the job script */
-            performJobScript(fileBoxObjectHandle);
+            performJobScript();
 
         } catch (OperationFailureException oe) {
             LoggerUtil.i(oe.getMessage());
@@ -170,7 +170,7 @@ public class ScanJob {
      *
      * @exception  OperationFailureException  operation exception
      */
-    private void performJobScript(UserBox fileBoxObjectHandle)
+    private void performJobScript()
             throws OperationFailureException {
 
         try {
@@ -180,11 +180,11 @@ public class ScanJob {
 //                    BoxScanRequest.createInstance(accessControlToken);
 
             /* Specifies the box in which the document is to be saved */
-//          BoxManager boxManager = BoxManager.getInstance(AppletActivator.bundleContext.getBundle(), accessControlToken);
-//
-//          MeapBox meapBox = boxManager.getMeapBox(AppletActivator.bundleContext.getBundle(), accessControlToken);
+          BoxManager boxManager = BoxManager.getInstance(AppletActivator.bundleContext.getBundle(), accessControlToken);
+
+          MeapBox meapBox = boxManager.getMeapBox(AppletActivator.bundleContext.getBundle(), accessControlToken);
           
-            boxScanRequest.setBox(accessControlToken, fileBoxObjectHandle);
+            boxScanRequest.setBox(accessControlToken, meapBox);
 
             /* Sets the size of originals */
             boxScanRequest.setScanSize(

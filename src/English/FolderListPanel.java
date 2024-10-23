@@ -11,19 +11,12 @@
 //
 // ***************************************************************************
 
-import java.awt.Color;
 import java.awt.Font;
 import java.awt.Panel;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.security.AccessControlException;
-import java.util.Calendar;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -35,11 +28,7 @@ import com.canon.meap.ctk.awt.CLabelButton;
 import com.canon.meap.imaging.ImagingException;
 import com.canon.meap.imi.OperationFailureException;
 import com.canon.meap.imi.UnavailableMethodException;
-import com.canon.meap.imi.box.BoxContentAppendedEvent;
-import com.canon.meap.imi.box.BoxContentDeletedEvent;
-import com.canon.meap.imi.box.BoxEventAdapter;
-import com.canon.meap.imi.box.BoxManager;
-import com.canon.meap.imi.box.userbox.UserBox;
+import com.canon.meap.imi.box.meapbox.MeapBox;
 import com.canon.meap.imi.data.JobState;
 import com.canon.meap.imi.job.boxscan.BoxScanJobDeletedEvent;
 import com.canon.meap.imi.job.boxscan.BoxScanJobEventAdapter;
@@ -47,10 +36,7 @@ import com.canon.meap.imi.job.boxscan.BoxScanJobScanImagesStoreCompletedEvent;
 import com.canon.meap.imi.job.boxscan.BoxScanJobScanPageCountEvent;
 import com.canon.meap.imi.job.boxscan.BoxScanJobStateChangedEvent;
 import com.canon.meap.imi.job.boxscan.BoxScanRequest;
-import com.canon.meap.security.LoginContext;
 import com.canon.meap.service.avs.CAppletContext;
-import com.canon.meap.service.log.LogService;
-import com.canon.meap.service.log.Logger;
 import lombok.AllArgsConstructor;
 import lombok.Value;
 
@@ -66,8 +52,6 @@ public class FolderListPanel extends Panel implements ActionListener {
   private static final long serialVersionUID = 3932463120881006951L;
 
   private JobService jobService;
-
-  private FileBox fileBox;
 
   private ScanJob scanJob;
 
@@ -99,16 +83,12 @@ public class FolderListPanel extends Panel implements ActionListener {
   private static final int FOLDER_INFO_FONT = 16;
   private static final int FOLDER_INFO_MAX = 8;
 
-  /* EventListener */
-  private MouseEventAdapter mouseEventAdapter;
-//  private BoxEventReceiver boxEventReceiver;
   private BoxScanJobEventReceiver scanJobEventReceiver;
   private BoxScanRequest boxScanRequest;
   private SingleDocumentJob documentJob;
-  
+
   private int dispPage;
   private int dispFolderCount;
-  private boolean disableUI;
 
   /**
    */
@@ -127,8 +107,6 @@ public class FolderListPanel extends Panel implements ActionListener {
 
     setVisible(false);
 
-    mouseEventAdapter = new MouseEventAdapter();
-    
   }
 
   /**
@@ -138,28 +116,9 @@ public class FolderListPanel extends Panel implements ActionListener {
     LoggerUtil.i("Display xxx");
     jobService = new JobService();
 
-    fileBox = new FileBox();
-
-    try {
-
-      fileBox.activate();
-
-      dispFolderCount = fileBox.getFolderCount();
-
-      dispPage = 0;
-
-      dispFolderLists();
-      dispPageButtons();
-      dispJobButtons();
-      dispFileBoxNo();
-
-      enableComponents();
-
-//      addCpcaEventAdapter();
-
-    } catch (OperationFailureException oe) {
-      System.out.println(oe.getMessage());
-    }
+    dispPage = 0;
+    dispJobButtons();
+    enableComponents();
 
     setVisible(true);
 
@@ -171,7 +130,6 @@ public class FolderListPanel extends Panel implements ActionListener {
    */
   public void unDisplay() {
 
-//    removeCpcaEventAdapter();
     removeScanEventListener();
 
     disableComponents();
@@ -179,10 +137,8 @@ public class FolderListPanel extends Panel implements ActionListener {
     dispPage = 0;
     dispFolderCount = 0;
 
-    fileBox = null;
-
     jobService = null;
-    
+
     documentJob = null;
 
     setVisible(false);
@@ -267,95 +223,6 @@ public class FolderListPanel extends Panel implements ActionListener {
     return;
   }
 
-  /**
-   */
-  private void dispFolderLists() {
-
-    int startNumber;
-    String stringPageSize = null;
-
-    startNumber = dispPage * FOLDER_INFO_MAX;
-    if ((startNumber >= dispFolderCount) && (dispPage > 0)) {
-      dispPage--;
-      startNumber = dispPage * FOLDER_INFO_MAX;
-    }
-
-    for (int i = 0; i < FOLDER_INFO_MAX; i++) {
-
-      if (i + startNumber < dispFolderCount) {
-
-        nameLabel[i].setText(fileBox.getFolderName(i + startNumber));
-
-        stringPageSize = "000" + Long.toString(fileBox.getPageSize(i + startNumber));
-        pageLabel[i].setText(stringPageSize.substring(stringPageSize.length() - 4));
-
-        dateLabel[i].setText(convTimeStampToDateString(fileBox.getTimeStamp(i + startNumber)));
-
-        timeLabel[i].setText(convTimeStampToTimeString(fileBox.getTimeStamp(i + startNumber)));
-
-        folderInfoLine[i].setVisible(true);
-
-        if ((startNumber + i) == fileBox.getSelectFolderNo()) {
-          setInfoLineBackground(i, CColor.powderblue);
-        } else {
-          setInfoLineBackground(i, CColor.white);
-        }
-
-      } else {
-        folderInfoLine[i].setVisible(false);
-      }
-    }
-
-    return;
-  }
-
-  /**
-   * ���t��"MM/DD"�`���ŕԂ��܂�
-   *
-   * @param dateTimes ���t�E����
-   *
-   */
-  private String convTimeStampToDateString(Calendar dateTimes) {
-
-    String stringDate = null;
-    String stringMMDD = null;
-
-    stringDate = "0" + Long.toString(dateTimes.get(Calendar.MONTH) + 1);
-    stringMMDD = stringDate.substring(stringDate.length() - 2) + "/";
-    stringDate = "0" + Long.toString(dateTimes.get(Calendar.DATE));
-    stringMMDD = stringMMDD + stringDate.substring(stringDate.length() - 2);
-
-    return stringMMDD;
-  }
-
-  /**
-   *
-   *
-   */
-  private String convTimeStampToTimeString(Calendar dateTimes) {
-
-    String stringTime = null;
-    String stringHHMM = null;
-
-    stringTime = "0" + Long.toString(dateTimes.get(Calendar.HOUR));
-    stringHHMM = stringTime.substring(stringTime.length() - 2) + ":";
-    stringTime = "0" + Long.toString(dateTimes.get(Calendar.MINUTE));
-    stringHHMM = stringHHMM + stringTime.substring(stringTime.length() - 2);
-
-    return stringHHMM;
-  }
-
-  private void setInfoLineBackground(int lineNo, Color color) {
-
-    nameLabel[lineNo].setBackground(color);
-    pageLabel[lineNo].setBackground(color);
-    dateLabel[lineNo].setBackground(color);
-    timeLabel[lineNo].setBackground(color);
-    folderInfoLine[lineNo].setBackground(color);
-
-    return;
-  }
-
   private void locatePageButtons() {
 
     pageUpButton = new CArrowButton(CArrowButton.ARROW_UP);
@@ -378,27 +245,6 @@ public class FolderListPanel extends Panel implements ActionListener {
 
   /**
    */
-  private void dispPageButtons() {
-
-    if (dispPage > 0) {
-      pageUpButton.setEnabled(true);
-    } else {
-      pageUpButton.setEnabled(false);
-    }
-
-    if (dispPage < (dispFolderCount - 1) / FOLDER_INFO_MAX) {
-      pageDownButton.setEnabled(true);
-    } else {
-      pageDownButton.setEnabled(false);
-    }
-
-    pageCountLabel.setText((dispPage + 1) + "/" + (((dispFolderCount - 1) / FOLDER_INFO_MAX) + 1));
-
-    return;
-  }
-
-  /**
-   */
   private void locateJobButtons() {
 
     /* [Send] button */
@@ -414,10 +260,10 @@ public class FolderListPanel extends Panel implements ActionListener {
     delButton.setBounds(350, 290, 116, 42);
     delButton.addActionListener(this);
     add(delButton);
-    
+
     /* [Continue] button */
-    continueButton = new CLabelButton("Continue", CLabelButton.CENTER, CLabelButton.CENTER, CColor.black,
-        CLabelButton.ARROW_NONE);
+    continueButton = new CLabelButton("Continue", CLabelButton.CENTER, CLabelButton.CENTER,
+        CColor.black, CLabelButton.ARROW_NONE);
     continueButton.setBounds(480, 290, 116, 42);
     continueButton.addActionListener(this);
     add(continueButton);
@@ -438,17 +284,11 @@ public class FolderListPanel extends Panel implements ActionListener {
     /**
      * Validate the [Delete] [Scan] [Print] button while folder is selected
      */
-    if (fileBox.isSelected()) {
-      scanButton.setEnabled(true);
-      sendButton.setEnabled(true);
-      delButton.setEnabled(true);
+    scanButton.setEnabled(true);
+    sendButton.setEnabled(true);
+    delButton.setEnabled(true);
 
-      /* Validate the [Scan] button only when folder isnot selected */
-    } else {
-      scanButton.setEnabled(true);
-      sendButton.setEnabled(false);
-      delButton.setEnabled(false);
-    }
+    /* Validate the [Scan] button only when folder isnot selected */
 
     return;
   }
@@ -461,28 +301,6 @@ public class FolderListPanel extends Panel implements ActionListener {
     messageLabel.setBounds(10, 340, 600, 30);
     add(messageLabel);
     messageLabel.setBackground(CColor.white);
-
-    return;
-  }
-
-  /**
-   */
-  private void dispFileBoxNo() {
-
-    StringBuffer messageFileBoxNo = null;
-    String stringFileBoxNo = null;
-    int intFileBoxNo = 0;
-
-    messageFileBoxNo = new StringBuffer("FileBox No. : ");
-
-    intFileBoxNo = fileBox.getFileBoxNo();
-    if (intFileBoxNo < 10) {
-      messageFileBoxNo.append('0');
-    }
-    stringFileBoxNo = new Integer(intFileBoxNo).toString();
-    messageFileBoxNo.append(stringFileBoxNo);
-
-    displayMessage(messageFileBoxNo.toString());
 
     return;
   }
@@ -501,18 +319,9 @@ public class FolderListPanel extends Panel implements ActionListener {
    */
   private void enableComponents() {
 
-    for (int i = 0; i < FOLDER_INFO_MAX; i++) {
-      nameLabel[i].addMouseListener(mouseEventAdapter);
-      pageLabel[i].addMouseListener(mouseEventAdapter);
-      dateLabel[i].addMouseListener(mouseEventAdapter);
-      timeLabel[i].addMouseListener(mouseEventAdapter);
-      folderInfoLine[i].addMouseListener(mouseEventAdapter);
-    }
 
     dispJobButtons();
-    dispPageButtons();
 
-    disableUI = false;
 
     return;
   }
@@ -520,14 +329,6 @@ public class FolderListPanel extends Panel implements ActionListener {
   /**
    */
   private void disableComponents() {
-
-    for (int i = 0; i < FOLDER_INFO_MAX; i++) {
-      nameLabel[i].removeMouseListener(mouseEventAdapter);
-      pageLabel[i].removeMouseListener(mouseEventAdapter);
-      dateLabel[i].removeMouseListener(mouseEventAdapter);
-      timeLabel[i].removeMouseListener(mouseEventAdapter);
-      folderInfoLine[i].removeMouseListener(mouseEventAdapter);
-    }
 
     continueButton.setEnabled(false);
     delButton.setEnabled(true);
@@ -537,32 +338,8 @@ public class FolderListPanel extends Panel implements ActionListener {
     pageUpButton.setEnabled(false);
     pageDownButton.setEnabled(false);
 
-    disableUI = true;
-
     return;
   }
-
-  /**
-   * Define the CPCA Eventlistener
-   */
-//  private void addCpcaEventAdapter() {
-//
-//    boxEventReceiver = new BoxEventReceiver();
-//
-//    try {
-//      /* Obtains an instance of the box management class */
-//      BoxManager manager =
-//          BoxManager.getInstance(AppletActivator.bundleContext.getBundle(), jobService.accessControlToken);
-//      /* Registers an event listener */
-//      manager.addBoxEventListener(AppletActivator.bundleContext.getBundle(), jobService.accessControlToken,
-//          boxEventReceiver);
-//
-//    } catch (OperationFailureException oe) {
-//      // logger.log(loginContext, Logger.LOG_LEVEL_INFO, oe.getMessage());
-//    }
-//
-//    return;
-//  }
 
   private void addScanRequestListener() {
     scanJobEventReceiver = new BoxScanJobEventReceiver();
@@ -577,31 +354,6 @@ public class FolderListPanel extends Panel implements ActionListener {
     }
 
   }
-
-  /**
-   * Delete the CPCAEventListener
-   */
-//  private void removeCpcaEventAdapter() {
-//
-//    if (null != boxEventReceiver) {
-//
-//      try {
-//        /* Obtains an instance of the box management class */
-//        BoxManager manager =
-//            BoxManager.getInstance(AppletActivator.bundleContext.getBundle(), jobService.accessControlToken);
-//        /* Deletes listeners that receive events */
-//        manager.removeBoxEventListener(AppletActivator.bundleContext.getBundle(), jobService.accessControlToken,
-//            boxEventReceiver);
-//
-//      } catch (OperationFailureException oe) {
-//        // logger.log(loginContext, Logger.LOG_LEVEL_INFO, oe.getMessage());
-//      }
-//
-//      boxEventReceiver = null;
-//    }
-//
-//    return;
-//  }
 
   private void removeScanEventListener() {
     if (null != scanJobEventReceiver && null != boxScanRequest) {
@@ -618,61 +370,64 @@ public class FolderListPanel extends Panel implements ActionListener {
       scanJobEventReceiver = null;
     }
   }
-  
+
   private void executeContinue() {
     disableComponents();
-    if(scanJob != null) {
+    if (scanJob != null) {
       LoggerUtil.i("continue scan");
       scanJob.continueScan();
     } else {
       LoggerUtil.i("scan job nll");
     }
   }
-  
+
   private void executeSend() {
     List<String> imgUrls = documentJob.getDocumentList();
     // Send
     for (String imgUrl : imgUrls) {
       LoggerUtil.i(imgUrl);
-//      try {
-//        ByteArrayOutputStream os = createByteArrayOutputStreamFromFile(imgUrl);
-//        FTPUtil.uploadFile("pc1511sq", 21, "anonymous", "", imgUrl, "result.pdf");
-////        EmailUtil.sendEmailWithAttachment("hiepnvh@gmail.com", "test", "test", os);
-//      } catch (IOException e) {
-//        LoggerUtil.i(e.getMessage());
-//      }
+      // try {
+      // ByteArrayOutputStream os = createByteArrayOutputStreamFromFile(imgUrl);
+      // FTPUtil.uploadFile("pc1511sq", 21, "anonymous", "", imgUrl, "result.pdf");
+      //// EmailUtil.sendEmailWithAttachment("hiepnvh@gmail.com", "test", "test", os);
+      // } catch (IOException e) {
+      // LoggerUtil.i(e.getMessage());
+      // }
     }
 
   }
-  
-//  private ByteArrayOutputStream createByteArrayOutputStreamFromFile(String filePath) throws IOException {
-//    File file = new File(filePath);
-//    LoggerUtil.i(file.getAbsolutePath());
-//    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-//    
-//    try (FileInputStream fileInputStream = new FileInputStream(file)) {
-//      LoggerUtil.i("created fileInputStream");
-//        byte[] buffer = new byte[1024];
-//        int bytesRead;
-//
-//        // Read the file and write to ByteArrayOutputStream
-//        while ((bytesRead = fileInputStream.read(buffer)) != -1) {
-//            byteArrayOutputStream.write(buffer, 0, bytesRead);
-//        }
-//    }
-//    LoggerUtil.i("created byteArrayOutputStream");
-//    return byteArrayOutputStream;
-//}
+
+  // private ByteArrayOutputStream createByteArrayOutputStreamFromFile(String filePath) throws
+  // IOException {
+  // File file = new File(filePath);
+  // LoggerUtil.i(file.getAbsolutePath());
+  // ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+  //
+  // try (FileInputStream fileInputStream = new FileInputStream(file)) {
+  // LoggerUtil.i("created fileInputStream");
+  // byte[] buffer = new byte[1024];
+  // int bytesRead;
+  //
+  // // Read the file and write to ByteArrayOutputStream
+  // while ((bytesRead = fileInputStream.read(buffer)) != -1) {
+  // byteArrayOutputStream.write(buffer, 0, bytesRead);
+  // }
+  // }
+  // LoggerUtil.i("created byteArrayOutputStream");
+  // return byteArrayOutputStream;
+  // }
 
   private void createCacheImage() {
 
     // send to destination
     LoggerUtil.i("createCacheImage...");
-    UserBox userbox = fileBox.getObjectHandle();
-    String targetPath  = "test";
+    // UserBox userbox = fileBox.getObjectHandle();
+
+    String targetPath = "test";
     documentJob = new SingleDocumentJob(targetPath);
     try {
-      documentJob.addPage(userbox.getHandle(jobService.accessControlToken));
+      MeapBox meapBox = (MeapBox) boxScanRequest.getBox(jobService.accessControlToken);
+      documentJob.addPage(meapBox.getHandle(jobService.accessControlToken));
       LoggerUtil.i("Create cache done");
     } catch (AccessControlException e) {
       LoggerUtil.i(e.getMessage());
@@ -682,26 +437,28 @@ public class FolderListPanel extends Panel implements ActionListener {
       LoggerUtil.i(e.getMessage());
     } catch (IOException e) {
       LoggerUtil.i(e.getMessage());
-    } 
-  }
-
-  private void executeDel() {
-
-    /* Invalidate the user interface */
-    disableComponents();
-
-    try {
-
-      /* Delete the folder object */
-      fileBox.deleteFolder();
-
-    } catch (OperationFailureException oe) {
-      // logger.log(loginContext, Logger.LOG_LEVEL_INFO, oe.getMessage());
+    } catch (OperationFailureException e) {
+      LoggerUtil.i(e.getMessage());
     }
-
-    return;
   }
-  
+
+  // private void executeDel() {
+  //
+  // /* Invalidate the user interface */
+  // disableComponents();
+  //
+  // try {
+  //
+  // /* Delete the folder object */
+  //// fileBox.deleteFolder();
+  //
+  // } catch (OperationFailureException oe) {
+  // // logger.log(loginContext, Logger.LOG_LEVEL_INFO, oe.getMessage());
+  // }
+  //
+  // return;
+  // }
+
   private void executeCancel() {
     scanJob.endScan();
   }
@@ -717,11 +474,11 @@ public class FolderListPanel extends Panel implements ActionListener {
 
       disableComponents();
 
-      if (false == scanJob.startScan(fileBox.getObjectHandle())) {
+      if (false == scanJob.startScan()) {
 
         enableComponents();
 
-//        scanJob = null;
+        // scanJob = null;
 
         return;
       }
@@ -731,7 +488,7 @@ public class FolderListPanel extends Panel implements ActionListener {
       displayMessage("Cannot submit the job.");
     }
 
-//    scanJob = null;
+    // scanJob = null;
 
     return;
   }
@@ -742,21 +499,21 @@ public class FolderListPanel extends Panel implements ActionListener {
    */
   public void actionPerformed(ActionEvent ae) {
 
-    dispFileBoxNo();
+    // dispFileBoxNo();
 
     if (ae.getSource() == pageUpButton) {
       if (dispPage > 0) {
         dispPage--;
-        dispFolderLists();
-        dispPageButtons();
+        // dispFolderLists();
+        // dispPageButtons();
       }
     }
 
     if (ae.getSource() == pageDownButton) {
       if (dispPage < (dispFolderCount - 1) / FOLDER_INFO_MAX) {
         dispPage++;
-        dispFolderLists();
-        dispPageButtons();
+        // dispFolderLists();
+        // dispPageButtons();
       }
     }
 
@@ -765,14 +522,14 @@ public class FolderListPanel extends Panel implements ActionListener {
     }
 
     if (ae.getSource() == delButton) {
-//      executeDel();
+      // executeDel();
       executeCancel();
     }
 
     if (ae.getSource() == scanButton) {
       executeScan();
     }
-    
+
     if (ae.getSource() == continueButton) {
       executeContinue();
     }
@@ -783,165 +540,81 @@ public class FolderListPanel extends Panel implements ActionListener {
 
   /**
    */
-  private class MouseEventAdapter extends MouseAdapter {
-
-    /**
-     *
-     * @param me MouseEvent
-     */
-    public void mousePressed(MouseEvent me) {
-
-      for (int i = 0; i < FOLDER_INFO_MAX; i++) {
-        setInfoLineBackground(i, CColor.white);
-      }
-
-      for (int i = 0; i < FOLDER_INFO_MAX; i++) {
-
-        if ((me.getComponent() == nameLabel[i]) || (me.getComponent() == pageLabel[i])
-            || (me.getComponent() == dateLabel[i]) || (me.getComponent() == timeLabel[i])
-            || (me.getComponent() == folderInfoLine[i])) {
-
-          if (((dispPage * FOLDER_INFO_MAX) + i) != fileBox.getSelectFolderNo()) {
-            fileBox.setSelectFolderNo((dispPage * FOLDER_INFO_MAX) + i);
-            setInfoLineBackground(i, CColor.powderblue);
-
-          } else {
-            fileBox.resetSelectFolderNo();
-          }
-
-          dispJobButtons();
-          break;
-        }
-      }
-
-      return;
-    }
-
-  }/* end class MouseEventAdapter */
-
-  /**
-   */
-//  private class BoxEventReceiver extends BoxEventAdapter {
-//
-//    /**
-//     *
-//     */
-//    public void boxContentAppended(BoxContentAppendedEvent event) {
-//      LoggerUtil.i("boxContentAppended");
-//      try {
-//
-//        fileBox.updateFolderInfo();
-//
-//        dispFolderCount = fileBox.getFolderCount();
-//
-//      } catch (OperationFailureException oe) {
-//        LoggerUtil.i(oe.getMessage());
-//      }
-//
-//      fileBox.resetSelectFolderNo();
-//      dispFolderLists();
-//      dispPageButtons();
-//    }
-//
-//    /**
-//     *
-//     */
-//    public void boxContentDeleted(BoxContentDeletedEvent event) {
-//      LoggerUtil.i("boxContentDeleted");
-//      try {
-//
-//        fileBox.updateFolderInfo();
-//
-//        dispFolderCount = fileBox.getFolderCount();
-//
-//      } catch (OperationFailureException oe) {
-//        System.out.println(oe.getMessage());
-//      }
-//
-//      fileBox.resetSelectFolderNo();
-//      dispFolderLists();
-//
-//      if (disableUI == true) {
-//
-//        enableComponents();
-//      }
-//    }
-//
-//  }/* end class BoxEventReceiver */
-
-  /**
-   */
   private class BoxScanJobEventReceiver extends BoxScanJobEventAdapter {
-    
+
     private ExecutorService imageProcExecutor;
     private JobState jobState;
-    
+
     BoxScanJobEventReceiver() {
-      imageProcExecutor = Executors.newSingleThreadExecutor( new NamedThreadFactory(getClass().getSimpleName() + ".imageProcExecutor"));
+      imageProcExecutor = Executors.newSingleThreadExecutor(
+          new NamedThreadFactory(getClass().getSimpleName() + ".imageProcExecutor"));
     }
 
     public void jobDeleted(BoxScanJobDeletedEvent event) {
       LoggerUtil.i("jobDeleted");
       enableComponents();
     }
-    
+
     public void jobScanPageCount(BoxScanJobScanPageCountEvent event) {
       LoggerUtil.i("jobScanPageCount");
-        displayMessage("Scanned " + String.valueOf(event.getCount()) + " pages");
-        imageProcExecutor.submit(new ImageProcRunnable(jobState));
+      displayMessage("Scanned " + String.valueOf(event.getCount()) + " pages");
+      imageProcExecutor.submit(new ImageProcRunnable(jobState));
     }
-    
+
     public void jobScanImagesStoreCompleted(BoxScanJobScanImagesStoreCompletedEvent event) {
       LoggerUtil.i("jobScanImagesStoreCompleted");
-      displayMessage("Scanned " + String.valueOf(event.getJobId()) + " done, stored, creating cache images");
+      displayMessage(
+          "Scanned " + String.valueOf(event.getJobId()) + " done, stored, creating cache images");
       createCacheImage();
     }
-    
+
     public void jobStateChanged(final BoxScanJobStateChangedEvent event) {
       LoggerUtil.i("jobStateChanged " + event.getJobState().getState());
       jobState = event.getJobState();
       if (jobState != null && jobState.getState() == JobState.STATE_COMPLETED) {
         imageProcExecutor.submit(new ImageProcCompleteRunnable());
         imageProcExecutor.shutdown();
-//        continueButton.setEnabled(true);
+        // continueButton.setEnabled(true);
         displayMessage("Job state completed, jobid " + String.valueOf(event.getJobId()) + "");
-        
-      } else if (jobState.getState() == JobState.STATE_INTERACTION && jobState.getReason() == JobState.REASON_OPERATED_BY_OPERATOR) {
-//        continueButton.setEnabled(true);
-        //event when there are some errors
+
+      } else if (jobState.getState() == JobState.STATE_INTERACTION
+          && jobState.getReason() == JobState.REASON_OPERATED_BY_OPERATOR) {
+        // continueButton.setEnabled(true);
+        // event when there are some errors
       }
-      
+
     }
 
   }/* end class BoxScanJobEventReceiver */
-  
+
   @AllArgsConstructor
   private class ImageProcCompleteRunnable implements Runnable {
     @Override
     public void run() {
-      //end scan job
+      // end scan job
       try {
         documentJob.endJob();
       } catch (IOException e) {
         LoggerUtil.i(e.toString());
       }
-      //delete all docs
-      //remove listener
+      // delete all docs
+      // remove listener
       removeScanEventListener();
     }
   }
-  
+
   @Value
   private class ImageProcRunnable implements Runnable {
     private JobState jobState;
+
     public ImageProcRunnable(JobState jobState) {
       this.jobState = jobState;
     }
-    
+
     @Override
     public void run() {
-      //if job state is ready, then can continue scan
-//      if (jobState == JobState.)
+      // if job state is ready, then can continue scan
+      // if (jobState == JobState.)
     }
   }
 
